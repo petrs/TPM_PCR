@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+#Visual studio files
+TPM_PCR.vcxproj.user
+
