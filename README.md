@@ -18,7 +18,7 @@ schtasks.exe /Create /SC DAILY /ST 20:00 /TN tpm_pcr_collect /TR "%cd%\TPM_PCR.e
 Every device is assigned with unique number stored in file ''unique_device_id.txt''. If not found, new unique ID is generated and stored into file.
 
 ## Usage
-
+```
   TPM_PCR.exe collect ... collects basic TPM data, store in current folder
   
   TPM_PCR.exe collect <base_path> ... collects basic TPM data, set base directory path as base_path
@@ -28,5 +28,5 @@ Every device is assigned with unique number stored in file ''unique_device_id.tx
   TPM_PCR.exe ? ... prints help
   
   The tool collects device info, TPM version, the current values of TPM PCR registers, TPM platform counters and optionally EK and RSK public key.The measurement is stored into file PCR_date_time.txt (e.g., 'PCR_2018-03-31_1915.txt').
-  
+```  
   
