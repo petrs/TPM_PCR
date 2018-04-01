@@ -734,7 +734,7 @@ void printHelp() {
 	wprintf(L"Usage: TPM_PCR.exe collect ... collects basic TPM data, store in current folder\n");
 	wprintf(L"Usage: TPM_PCR.exe collect <base_path> ... collects basic TPM data, set base directory path as base_path\n");
 	wprintf(L"Usage: TPM_PCR.exe collectall ... collects extended TPM data\n");
-	wprintf(L"Usage: TPM_PCR.exe schedule ... schedules data collection to run every day at 8pm using Windows Task Scheduler\n");
+	wprintf(L"Usage: TPM_PCR.exe schedule ... schedules data collection to run every day at 7pm using Windows Task Scheduler\n");
 	wprintf(L"Usage: TPM_PCR.exe ? ... prints this help\n\n");
 	wprintf(L"The tool collects device info, TPM version, the current values of TPM PCR registers, TPM platform counters \n");
 	wprintf(L"and optionally EK and RSK public key.The measurement is stored into file PCR_date_time.txt(e.g., 'PCR_2018-03-31_1915.txt').\n");

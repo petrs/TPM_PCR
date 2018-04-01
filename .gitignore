@@ -36,5 +36,9 @@ TPM_PCR.vcxproj.user
 TPM_PCR\x64
 x64
 *.sdf
+*.iobj
+*.ipdb
+*.pdb
+*.tlog
 *.VC.opendb
 
