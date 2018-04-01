@@ -1,6 +1,6 @@
-# TPM_PCR - A tool for the unattended collection of [Trusted Platform Module](https://en.wikipedia.org/wiki/Trusted_Platform_Module) platform counter registers (PCRs). 
+# TPM_PCR - a tool for TPM PCRs collection
 
-The basic functionality is taken from [Microsoft PCPTool TSS.MSR](https://github.com/Microsoft/TSS.MSR/tree/master/PCPTool.v11) and is modified to automatically and repeatedly collect PCR measurements into separate files. A basic system info and random id to logically connect measurements from the same device are also inserted. The application may require the installation of [Microsoft Visual C++ 2015 Redistributable Package](https://www.microsoft.com/en-us/download/details.aspx?id=53840).
+A tool for the unattended collection of [Trusted Platform Module](https://en.wikipedia.org/wiki/Trusted_Platform_Module) platform counter registers (PCRs). The basic functionality is taken from [Microsoft PCPTool TSS.MSR](https://github.com/Microsoft/TSS.MSR/tree/master/PCPTool.v11) and is modified to automatically and repeatedly collect PCR measurements into separate files. A basic system info and random id to logically connect measurements from the same device are also inserted. The application may require the installation of [Microsoft Visual C++ 2015 Redistributable Package](https://www.microsoft.com/en-us/download/details.aspx?id=53840).
 
 ## Single run
 
