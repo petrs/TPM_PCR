@@ -33,4 +33,8 @@
 
 #Visual studio files
 TPM_PCR.vcxproj.user
+TPM_PCR\x64
+x64
+*.sdf
+*.VC.opendb
 

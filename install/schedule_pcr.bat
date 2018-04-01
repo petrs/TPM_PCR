@@ -1,0 +1,1 @@
+schtasks.exe /Create /SC DAILY /ST 20:00 /TN tpm_pcr_collect /TR "%cd%\TPM_PCR.exe collectAll %cd%"
