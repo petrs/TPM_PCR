@@ -89,6 +89,8 @@ BIOS Version:              Hewlett-Packard M71
 ## Do I even have TPM chip in my computer?
 Not all computers are equipped with the TPM chip. An easy option to figure out is to press WinButton+R and then type ''tpm.msc''. The TPM management console will display necessary information.
 
+![TPM console](/images/tpm_msc_man.png)
+
 ## Usage
 ```
   TPM_PCR.exe collect ... collects basic TPM data, store in a current folder
