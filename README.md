@@ -1,10 +1,12 @@
-# TPM_PCR - a tool for TPM PCRs collection
+TPM_PCR - a tool for TPM PCRs collection
+=======
+[![Latest release](https://img.shields.io/github/release/petrs/TPM_PCR.svg)](https://github.com/petrs/TPM_PCR/releases/latest)
 
 A tool for the unattended collection of [Trusted Platform Module](https://en.wikipedia.org/wiki/Trusted_Platform_Module) platform counter registers (PCRs). The basic functionality is taken from [Microsoft PCPTool TSS.MSR](https://github.com/Microsoft/TSS.MSR/tree/master/PCPTool.v11) and is modified to automatically and repeatedly collect PCR measurements into separate files. A basic system info and random id to logically connect measurements from the same device are also inserted. The application may require the installation of [Microsoft Visual C++ 2015 Redistributable Package](https://www.microsoft.com/en-us/download/details.aspx?id=53840).
 
 ## Single run
 
-1. Download the most recent build of TPM_PCR tool
+1. Download [the most recent release](https://github.com/petrs/TPM_PCR/releases/latest) of TPM_PCR tool
 2. Run the following command to collect basic info.
 ```
 TPM_PCR.exe collect
