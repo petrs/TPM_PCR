@@ -6,7 +6,7 @@ A tool for the unattended collection of [Trusted Platform Module](https://en.wik
 
 ## Single run
 
-1. Download [the most recent release](https://github.com/petrs/TPM_PCR/releases/latest) of TPM_PCR tool
+1. Download the most recent release of TPM_PCR tool here: [![Latest release](https://img.shields.io/github/release/petrs/TPM_PCR.svg)](https://github.com/petrs/TPM_PCR/releases/latest)
 2. Run the following command to collect basic info.
 ```
 TPM_PCR.exe collect
@@ -23,6 +23,7 @@ Every device is assigned with unique number stored in file ''unique_device_id.tx
 ## Example result
 ```xml
 <Measurement>
+<Version>0.1.0</Version>
 <Time>2018-03-31_1915</Time>
 <TimeUnix>30656804_-1705709280</TimeUnix>
 <DeviceUniqueID>3260123883014769</DeviceUniqueID>
