@@ -21,6 +21,9 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 
 #include "stdafx.h"
 
+#define TPM_PCR_VERSION L"0.1.0"
+
+
 #define TPM_AVAILABLE_PLATFORM_PCRS (24)
 #define SHA1_DIGEST_SIZE   (20)
 #define SHA256_DIGEST_SIZE (32)
@@ -720,6 +723,10 @@ _In_reads_(argc) WCHAR* argv[]) {
 
 	wprintf(L"<Measurement>\n");
 	if (pFile) fwprintf(pFile, L"<Measurement>\n");
+
+	wprintf(L"<Version>%s</Version>\n", TPM_PCR_VERSION);
+	if (pFile) fwprintf(pFile, L"<Version>%s</Version>\n", TPM_PCR_VERSION);
+	
 
 	// Time
 	wprintf(L"<Time>%04d-%02d-%02d_%02d%02d</Time>\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
