@@ -6,7 +6,7 @@ A tool for the unattended collection of [Trusted Platform Module](https://en.wik
 
 ## Single run
 
-1. Download the most recent build of TPM_PCR tool
+1. Download [the most recent release](https://github.com/petrs/TPM_PCR/releases/latest) of TPM_PCR tool
 2. Run the following command to collect basic info.
 ```
 TPM_PCR.exe collect
