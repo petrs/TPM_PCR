@@ -16,6 +16,11 @@ TPM_PCR.exe collect
 ## Repeated run using Windows task scheduler
 The PCRs are occasionally changing based on software updates and other platform changes. The data collection can be scheduled to run automatically every day using Windows task scheduler using the following command executed from (example: run every day at 8 pm, task name is tpm_pcr_collect):
 ```
+TPM_PCR.exe schedule
+```
+
+Alternatively, task scheduler can be directly called:
+```
 schtasks.exe /Create /SC DAILY /ST 20:00 /TN tpm_pcr_collect /TR "%cd%\TPM_PCR.exe collect %cd%"
 ```
 Every device is assigned with unique number stored in file ''unique_device_id.txt''. If not found, new unique ID is generated and stored into a file.
