@@ -41,4 +41,5 @@ x64
 *.pdb
 *.tlog
 *.VC.opendb
+TPM_PCR.log
 
