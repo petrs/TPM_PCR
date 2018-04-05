@@ -757,6 +757,7 @@ void printHelp() {
 	wprintf(L"Usage: TPM_PCR.exe collect <base_path> ... collects basic TPM data, set base directory path as base_path\n");
 	wprintf(L"Usage: TPM_PCR.exe collectall ... collects extended TPM data\n");
 	wprintf(L"Usage: TPM_PCR.exe schedule ... schedules data collection to run every day at 7pm using Windows Task Scheduler\n");
+	wprintf(L"Usage: TPM_PCR.exe unschedule ... remove scheduled data collection using Windows Task Scheduler\n");
 	wprintf(L"Usage: TPM_PCR.exe ? ... prints this help\n\n");
 	wprintf(L"The tool collects device info, TPM version, the current values of TPM PCR registers, TPM platform counters \n");
 	wprintf(L"and optionally EK and RSK public key.The measurement is stored into file PCR_date_time.txt(e.g., 'PCR_2018-03-31_1915.txt').\n");
@@ -782,16 +783,23 @@ void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll
 	fclose(pFile);
 }
 
-HRESULT
-schedule() {
+HRESULT schedule(bool bSchedule) {
 	HRESULT hr = S_OK;
 
-	wprintf(L"Scheduling repeated executing every day at 7pm (name of task is tpm_pcr_collect)... ");
+	if (bSchedule) {
+		wprintf(L"Scheduling repeated executing every day at 7pm (name of task is tpm_pcr_collect)... ");
+		WCHAR systemInfoCmd[] = L"schtasks.exe /Create /SC DAILY /ST 19:00 /TN tpm_pcr_collect /TR \"%cd%\\TPM_PCR.exe collect %cd%\"";
+		hr = _wsystem(systemInfoCmd);
+	}
+	else {
+		wprintf(L"Remove scheduled task with name 'tpm_pcr_collect'... ");
+		WCHAR systemInfoCmd[] = L"schtasks.exe /Delete /TN tpm_pcr_collect";
+		hr = _wsystem(systemInfoCmd);
+	}
 
-	WCHAR systemInfoCmd[] = L"schtasks.exe /Create /SC DAILY /ST 19:00 /TN tpm_pcr_collect /TR \"%cd%\\TPM_PCR.exe collect %cd%\"";
-	hr = _wsystem(systemInfoCmd);
 	if (FAILED(hr)) {
 		wprintf(L"failed\n");
+		wprintf(L"You may try to remove task 'tpm_pcr_collect' manually by running Task Scheduler\n");
 	}
 	return hr;
 }
@@ -820,8 +828,12 @@ int __cdecl wmain(_In_ int argc,
 		}
 		else if (!_wcsicmp(command, L"schedule"))
 		{
-			schedule();
-		} 
+			schedule(true);
+		}
+		else if (!_wcsicmp(command, L"unschedule"))
+		{
+			schedule(false);
+		}
 		else
 		{
 			wprintf(L"Command not found.");
