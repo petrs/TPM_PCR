@@ -14,13 +14,15 @@ TPM_PCR.exe collect
 3. Investigate the resulting file (PCR_xxx_xxx.txt)
 
 ## Repeated run using Windows task scheduler
-The PCRs are occasionally changing based on software updates and other platform changes. The data collection can be scheduled to run automatically every day using Windows task scheduler using the following command executed from (example: run every day at 7 pm, task name is tpm_pcr_collect):
+The PCRs are occasionally changing based on software updates and other platform changes. The data collection can be scheduled to run automatically every day using Windows task scheduler using the following command executed from (example: run every day at 7 pm, task name is tpm_pcr_collect).
+
+**Schedule** repeated task:
 ```
 TPM_PCR.exe schedule
 ```
 A new file is created for every measurement. Every device is assigned with random unique number stored in file ''unique_device_id.txt''. This random number is also inserted into every file with measurement. If ''unique_device_id.txt'' file is not found, new unique ID is generated and stored into this file. 
 
-The task can be unscheduled simply by:
+The task can be **unscheduled** simply by:
 ```
 TPM_PCR.exe unschedule
 ```
