@@ -823,7 +823,6 @@ HRESULT packMeasurements() {
 	char	deviceID[deviceIDLen + 1] = { 0 };
 	FILE* idFile = NULL;
 	_wfopen_s(&idFile, deviceIDFileName, L"r");
-	wprintf(L"Device ID file is: %s", deviceIDFileName);
 
 	if (idFile) {
 		// File with unique id exists, use the value
@@ -836,8 +835,6 @@ HRESULT packMeasurements() {
 		sprintf_s(zipFileName, MAX_PATH, "%wsPCR_measurements.zip", currentDir);
 	}
 
-	printf("Zip path is: %s", zipFileName);
-	getchar();
 	// Remove previous zip file
 	remove(zipFileName);
 
