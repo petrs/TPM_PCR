@@ -34,6 +34,8 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #define TPM_STATIC_CONFIG_QUOTE_KEYS L"SYSTEM\\CurrentControlSet\\Services\\Tpm\\PlatformQuoteKeys"
 #define TPM_STATIC_CONFIG_KEYATTEST_KEYS L"SYSTEM\\CurrentControlSet\\Services\\Tpm\\KeyAttestationKeys"
 #define TPM_VOLATILE_CONFIG_DATA L"System\\CurrentControlSet\\Control\\IntegrityServices"
+#define DEVICE_UNIQUE_ID_FILENAME L"unique_device_id.txt"
+
 
 const int MAX_LOG_MESSAGE_LENGTH = 1000;
 //const int MAX_FILE_NAME = MAX_PATH;
@@ -49,6 +51,87 @@ void logResult(const WCHAR* message) {
 void logResult(const CHAR* message) {
 	printf(message);
 	if (pFile) fprintf(pFile, message);
+}
+
+
+HRESULT packMeasurements() {
+	HRESULT hr = S_OK;
+
+	WIN32_FIND_DATA ffd;
+	LARGE_INTEGER filesize;
+	HANDLE hFind = INVALID_HANDLE_VALUE;
+	DWORD dwError = 0;
+
+	char zipFileName[MAX_PATH] = { 0 };
+	const size_t deviceIDLen = 16;
+	char	deviceID[deviceIDLen + 1] = { 0 };
+	FILE* idFile = NULL;
+	if (wcslen(deviceIDFileName) > 0) {
+		_wfopen_s(&idFile, deviceIDFileName, L"r");
+	}
+	else {
+		_wfopen_s(&idFile, DEVICE_UNIQUE_ID_FILENAME, L"r");
+	}
+
+	if (idFile) {
+		// File with unique id exists, use the value
+		size_t deviceIDRealLen = fread_s(deviceID, deviceIDLen, 1, deviceIDLen, idFile);
+		fclose(idFile);
+
+		sprintf_s(zipFileName, MAX_PATH, "%wsPCR_measurements_%s.zip", currentDir, deviceID);
+	}
+	else {
+		sprintf_s(zipFileName, MAX_PATH, "%wsPCR_measurements.zip", currentDir);
+	}
+
+	// Remove previous zip file
+	remove(zipFileName);
+
+	// Search for all PCR_*.txt files in the directory
+	TCHAR searchMask[MAX_PATH] = { 0 };
+	swprintf_s(searchMask, MAX_PATH, L"%wsPCR_*.txt", currentDir);
+	hFind = FindFirstFile(searchMask, &ffd);
+	if (INVALID_HANDLE_VALUE == hFind) {
+		wprintf(L"FindFirstFile failed");
+		return dwError;
+	}
+	do {
+		if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+			// Open file, read content, write into zip file
+			char archive_filename[MAX_PATH];
+			sprintf_s(archive_filename, MAX_PATH, "%ws", ffd.cFileName);
+
+			filesize.LowPart = ffd.nFileSizeLow;
+			filesize.HighPart = ffd.nFileSizeHigh;
+
+			BYTE*	data = new BYTE[filesize.QuadPart];
+			size_t readed = 0;
+			FILE* hFile = NULL;
+			TCHAR fullFileName[MAX_PATH] = { 0 };
+			swprintf_s(fullFileName, MAX_PATH, L"%ws%ws", currentDir, ffd.cFileName);
+			_wfopen_s(&hFile, fullFileName, L"r");
+			if (hFile) {
+				// read content of file
+				readed = fread_s(data, filesize.QuadPart, sizeof(BYTE), filesize.QuadPart, hFile);
+				fclose(hFile);
+
+				// Store into zip
+				mz_bool status = mz_zip_add_mem_to_archive_file_in_place(zipFileName, archive_filename, data, readed, ffd.cFileName, (mz_uint16)wcslen(ffd.cFileName), MZ_BEST_COMPRESSION);
+				if (!status) {
+					wprintf(L"mz_zip_add_mem_to_archive_file_in_place for '%s' failed!\n", ffd.cFileName);
+				}
+			}
+		}
+	} while (FindNextFile(hFind, &ffd) != 0);
+
+	dwError = GetLastError();
+	if (dwError != ERROR_NO_MORE_FILES) {
+		wprintf(L"FindFirstFile failed");
+	}
+
+	FindClose(hFind);
+
+	return hr;
 }
 
 void
@@ -733,11 +816,11 @@ void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
 		// Put trailing backslash
 		currentDir[wcslen(currentDir)] = '\\';
 		swprintf_s(fileName, MAX_PATH, L"%wsPCR_%04d-%02d-%02d_%02d%02d.txt", currentDir, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
-		swprintf_s(deviceIDFileName, MAX_PATH, L"%wsunique_device_id.txt", currentDir);
+		swprintf_s(deviceIDFileName, MAX_PATH, L"%ws%ws", currentDir, DEVICE_UNIQUE_ID_FILENAME);
 	}
 	else {
 		swprintf_s(fileName, MAX_PATH, L"PCR_%04d-%02d-%02d_%02d%02d.txt", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
-		swprintf_s(deviceIDFileName, MAX_PATH, L"unique_device_id.txt");
+		swprintf_s(deviceIDFileName, MAX_PATH, DEVICE_UNIQUE_ID_FILENAME);
 	}
 	_wfopen_s(&pFile, fileName, L"w");
 
@@ -787,6 +870,9 @@ void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll
 	logResult(L"</Measurement>\n");
 
 	fclose(pFile);
+
+	// Pack all existing measurements into single zip file
+	packMeasurements();
 }
 
 HRESULT schedule(bool bSchedule) {
@@ -810,80 +896,6 @@ HRESULT schedule(bool bSchedule) {
 	return hr;
 }
 
-HRESULT packMeasurements() {
-	HRESULT hr = S_OK;
-
-	WIN32_FIND_DATA ffd;
-	LARGE_INTEGER filesize;
-	HANDLE hFind = INVALID_HANDLE_VALUE;
-	DWORD dwError = 0;
-	
-	char zipFileName[MAX_PATH] = { 0 };
-	const size_t deviceIDLen = 16;
-	char	deviceID[deviceIDLen + 1] = { 0 };
-	FILE* idFile = NULL;
-	_wfopen_s(&idFile, deviceIDFileName, L"r");
-
-	if (idFile) {
-		// File with unique id exists, use the value
-		size_t deviceIDRealLen = fread_s(deviceID, deviceIDLen, 1, deviceIDLen, idFile);
-		fclose(idFile);
-
-		sprintf_s(zipFileName, MAX_PATH, "%wsPCR_measurements_%s.zip", currentDir, deviceID);
-	}
-	else {
-		sprintf_s(zipFileName, MAX_PATH, "%wsPCR_measurements.zip", currentDir);
-	}
-
-	// Remove previous zip file
-	remove(zipFileName);
-
-	// Search for all PCR_*.txt files in the directory
-	TCHAR searchMask[MAX_PATH] = { 0 };
-	swprintf_s(searchMask, MAX_PATH, L"%wsPCR_*.txt", currentDir);
-	hFind = FindFirstFile(searchMask, &ffd);
-	if (INVALID_HANDLE_VALUE == hFind) {
-		wprintf(L"FindFirstFile failed");
-		return dwError;
-	}
-	do {
-		if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-			// Open file, read content, write into zip file
-			char archive_filename[MAX_PATH];
-			sprintf_s(archive_filename, MAX_PATH, "%ws", ffd.cFileName);
-
-			filesize.LowPart = ffd.nFileSizeLow;
-			filesize.HighPart = ffd.nFileSizeHigh;
-
-			BYTE*	data = new BYTE[filesize.QuadPart];
-			size_t readed = 0;
-			FILE* hFile = NULL;
-			TCHAR fullFileName[MAX_PATH] = { 0 };
-			swprintf_s(fullFileName, MAX_PATH, L"%ws%ws", currentDir, ffd.cFileName);
-			_wfopen_s(&hFile, fullFileName, L"r");
-			if (hFile) {
-				// read content of file
-				readed = fread_s(data, filesize.QuadPart, sizeof(BYTE), filesize.QuadPart, hFile);
-				fclose(hFile);
-
-				// Store into zip
-				mz_bool status = mz_zip_add_mem_to_archive_file_in_place(zipFileName, archive_filename, data, readed, ffd.cFileName, (mz_uint16) wcslen(ffd.cFileName), MZ_BEST_COMPRESSION);
-				if (!status) {
-					wprintf(L"mz_zip_add_mem_to_archive_file_in_place for '%s' failed!\n", ffd.cFileName);
-				}
-			}
-		}
-	} while (FindNextFile(hFind, &ffd) != 0);
-
-	dwError = GetLastError();
-	if (dwError != ERROR_NO_MORE_FILES)	{
-		wprintf(L"FindFirstFile failed");
-	}
-
-	FindClose(hFind);
-
-	return hr;
-}
 
 int __cdecl wmain(_In_ int argc,
 	_In_reads_(argc) WCHAR* argv[])
@@ -921,8 +933,6 @@ int __cdecl wmain(_In_ int argc,
 			wprintf(L"Command not found.");
 		}
 
-		// Pack all existing measurements into single zip file
-		packMeasurements();
 	}
 }
 
