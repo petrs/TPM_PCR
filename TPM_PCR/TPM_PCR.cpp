@@ -36,24 +36,33 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #define TPM_VOLATILE_CONFIG_DATA L"System\\CurrentControlSet\\Control\\IntegrityServices"
 #define DEVICE_UNIQUE_ID_FILENAME L"unique_device_id.txt"
 
+const size_t DEVICE_ID_LENGTH = 16;
 
-const int MAX_LOG_MESSAGE_LENGTH = 1000;
+const size_t MAX_LOG_MESSAGE_LENGTH = 1000;
 //const int MAX_FILE_NAME = MAX_PATH;
 WCHAR fileName[MAX_PATH + 1]; // file name for measurement storage
 WCHAR deviceIDFileName[MAX_PATH + 1] = { 0 }; // file name for unique device ID
 FILE * pFile = NULL; // Used inside all functions if not null
 WCHAR currentDir[MAX_PATH + 1] = {0};
 
+/*++
+Log provided string to stdout and file (if opened) - unicode version
+--*/
 void logResult(const WCHAR* message) {
 	wprintf(message);
 	if (pFile) fwprintf(pFile, message);
 }
+/*++
+Log provided string to stdout and file (if opened) - ascii version
+--*/
 void logResult(const CHAR* message) {
 	printf(message);
 	if (pFile) fprintf(pFile, message);
 }
 
-
+/*++
+Packs all files with measurements into single zip file
+--*/
 HRESULT packMeasurements() {
 	HRESULT hr = S_OK;
 
@@ -63,8 +72,7 @@ HRESULT packMeasurements() {
 	DWORD dwError = 0;
 
 	char zipFileName[MAX_PATH] = { 0 };
-	const size_t deviceIDLen = 16;
-	char	deviceID[deviceIDLen + 1] = { 0 };
+	char	deviceID[DEVICE_ID_LENGTH + 1] = { 0 };
 	FILE* idFile = NULL;
 	if (wcslen(deviceIDFileName) > 0) {
 		_wfopen_s(&idFile, deviceIDFileName, L"r");
@@ -75,7 +83,7 @@ HRESULT packMeasurements() {
 
 	if (idFile) {
 		// File with unique id exists, use the value
-		size_t deviceIDRealLen = fread_s(deviceID, deviceIDLen, 1, deviceIDLen, idFile);
+		size_t deviceIDRealLen = fread_s(deviceID, DEVICE_ID_LENGTH, 1, DEVICE_ID_LENGTH, idFile);
 		fclose(idFile);
 
 		sprintf_s(zipFileName, MAX_PATH, "%wsPCR_measurements_%s.zip", currentDir, deviceID);
@@ -134,10 +142,12 @@ HRESULT packMeasurements() {
 	return hr;
 }
 
-void
-PcpToolLevelPrefix(
+void PcpToolLevelPrefix(
 	UINT32 level
 	)
+/*++
+Inserts indentation into output
+--*/
 {
 	for (UINT32 n = 0; n < level; n++)
 	{
@@ -146,11 +156,14 @@ PcpToolLevelPrefix(
 }
 
 
-void
-PcpToolCallResult(
+
+void PcpToolCallResult(
 	_In_ WCHAR* func,
 	HRESULT hr
 	)
+/*++
+Process function result status code and print personalized message accordingly
+--*/ 
 {
 	PWSTR Buffer = NULL;
 	DWORD result = 0;
@@ -191,8 +204,10 @@ PcpToolCallResult(
 	}
 }
 
-HRESULT
-PcpToolGetPCRs()
+HRESULT PcpToolGetPCRs()
+/*++
+Obtains values of Platform Counter Registers
+--*/
 {
 	HRESULT hr = S_OK;
 	PCWSTR fileName = NULL;
@@ -252,8 +267,7 @@ Cleanup:
 	return hr;
 }
 
-HRESULT
-PcpToolGetVersion()
+HRESULT PcpToolGetVersion()
 	/*++
 	Retrieve the version strings from the PCP provider and the TPM.
 	--*/
@@ -518,8 +532,10 @@ Cleanup:
 	return hr;
 }
 
-HRESULT
-PcpToolGetPlatformCounters()
+/*++
+Retrieves platform counters
+--*/
+HRESULT PcpToolGetPlatformCounters()
 {
 	HRESULT hr = S_OK;
 	UINT32 OsBootCount = 0;
@@ -588,6 +604,9 @@ Cleanup:
 }
 
 
+/*++
+Prints provided key in human readable format
+--*/
 HRESULT
 PcpToolDisplayKey(
 	_In_ PCWSTR lpKeyName,
@@ -738,7 +757,6 @@ PcpToolGetEK_RSK()
 		goto Cleanup;
 	}
 
-
 Cleanup:
 	if (hProv != NULL)
 	{
@@ -749,20 +767,21 @@ Cleanup:
 	return hr;
 }
 
-HRESULT
-PcpToolGetSystemInfo() {
+/*++
+Retrieves information about the target system using subset of systeminfo command
+--*/
+HRESULT PcpToolGetSystemInfo() {
 	HRESULT hr = S_OK;
 	CHAR message[MAX_LOG_MESSAGE_LENGTH];
 
 	// Device unique ID (generated randomly, stored in file and reused)
 	logResult(L"<DeviceUniqueID>");
-	const size_t deviceIDLen = 16;
-	char	deviceID[deviceIDLen + 1] = {0};
+	char	deviceID[DEVICE_ID_LENGTH + 1] = {0};
 	FILE* idFile = NULL;
 	_wfopen_s(&idFile, deviceIDFileName, L"r");
 	if (idFile) {
 		// File with unique id already exists, use the value
-		size_t deviceIDRealLen = fread_s(deviceID, deviceIDLen, 1, deviceIDLen, idFile);
+		size_t deviceIDRealLen = fread_s(deviceID, DEVICE_ID_LENGTH, 1, DEVICE_ID_LENGTH, idFile);
 		if (sprintf_s(message, MAX_LOG_MESSAGE_LENGTH, "%s", deviceID) >= 0) {
 			logResult(message);
 		}
@@ -771,12 +790,12 @@ PcpToolGetSystemInfo() {
 	else {
 		// File with unique id not exists yet, create and generate new unique id
 		srand((unsigned int) time(NULL));
-		for (size_t i = 0; i < deviceIDLen; i++) {
+		for (size_t i = 0; i < DEVICE_ID_LENGTH; i++) {
 			deviceID[i] = '0' + rand() % 10;
 		}
 		_wfopen_s(&idFile, deviceIDFileName, L"w");
 		if (idFile != NULL) {
-			fwrite(deviceID, deviceIDLen, sizeof(BYTE), idFile);
+			fwrite(deviceID, DEVICE_ID_LENGTH, sizeof(BYTE), idFile);
 			fclose(idFile);
 		}
 		// Use newly generated ID
@@ -803,6 +822,9 @@ PcpToolGetSystemInfo() {
 	return hr;
 }
 
+/*++
+Prepares necessary files for storage of measurement info
+--*/
 void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
 	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 	SYSTEMTIME st;
@@ -852,6 +874,9 @@ void printHelp() {
 	wprintf(L"and optionally EK and RSK public key.The measurement is stored into file PCR_date_time.txt(e.g., 'PCR_2018-03-31_1915.txt').\n");
 }
 
+/*++
+Collects all required data 
+--*/
 void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll) {
 	PrepareMeasurementFiles(argc, argv);
 
@@ -875,6 +900,9 @@ void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll
 	packMeasurements();
 }
 
+/*++
+Schedule automatic collection of data using Windows Task Scheduler
+--*/
 HRESULT schedule(bool bSchedule) {
 	HRESULT hr = S_OK;
 
@@ -932,7 +960,6 @@ int __cdecl wmain(_In_ int argc,
 		{
 			wprintf(L"Command not found.");
 		}
-
 	}
 }
 
