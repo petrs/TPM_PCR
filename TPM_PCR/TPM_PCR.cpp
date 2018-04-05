@@ -34,11 +34,20 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #define TPM_STATIC_CONFIG_KEYATTEST_KEYS L"SYSTEM\\CurrentControlSet\\Services\\Tpm\\KeyAttestationKeys"
 #define TPM_VOLATILE_CONFIG_DATA L"System\\CurrentControlSet\\Control\\IntegrityServices"
 
+const int MAX_LOG_MESSAGE_LENGTH = 1000;
 const int MAX_FILE_NAME = 1000;
 WCHAR fileName[MAX_FILE_NAME]; // file name for measurement storage
 WCHAR deviceIDFileName[MAX_FILE_NAME]; // file name for unique device ID
 FILE * pFile = NULL; // Used inside all functions if not null
 
+void logResult(const WCHAR* message) {
+	wprintf(message);
+	if (pFile) fwprintf(pFile, message);
+}
+void logResult(const CHAR* message) {
+	printf(message);
+	if (pFile) fprintf(pFile, message);
+}
 
 void
 PcpToolLevelPrefix(
@@ -47,8 +56,7 @@ PcpToolLevelPrefix(
 {
 	for (UINT32 n = 0; n < level; n++)
 	{
-		wprintf(L"  ");
-		if (pFile) fwprintf(pFile, L"  ");
+		logResult(L"  ");
 	}
 }
 
@@ -61,6 +69,7 @@ PcpToolCallResult(
 {
 	PWSTR Buffer = NULL;
 	DWORD result = 0;
+	WCHAR message[MAX_LOG_MESSAGE_LENGTH]; 
 
 	if (FAILED(hr))
 	{
@@ -74,20 +83,25 @@ PcpToolCallResult(
 			0,
 			NULL);
 
-		wprintf(L"<Error_%s>\n", func);
-		if (pFile) fwprintf(pFile, L"<Error_%s>\n", func);
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Error_%s>\n", func) >= 0) {
+			logResult(message);
+		}
+
 		if (result != 0)
 		{
-			wprintf(L"%s: (0x%08lx) %s", func, hr, Buffer);
-			if (pFile) fwprintf(pFile, L"%s: (0x%08lx) %s", func, hr, Buffer);
+			if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"%s: (0x%08lx) %s", func, hr, Buffer) >= 0) {
+				logResult(message);
+			}
 		}
 		else
 		{
-			wprintf(L"%s: (0x%08lx)\n", func, hr);
-			if (pFile) fwprintf(pFile, L"%s: (0x%08lx)\n", func, hr);
+			if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"%s: (0x%08lx)\n", func, hr) >= 0) {
+				logResult(message);
+			}
 		}
-		wprintf(L"</Error_%s>\n", func);
-		if (pFile) fwprintf(pFile, L"</Error_%s>\n", func);
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"</Error_%s>\n", func) >= 0) {
+			logResult(message);
+		}
 		LocalFree(Buffer);
 	}
 }
@@ -101,6 +115,7 @@ PcpToolGetPCRs()
 	BYTE pcrTable[TPM_AVAILABLE_PLATFORM_PCRS * MAX_DIGEST_SIZE] = { 0 };
 	DWORD cbPcrTable = sizeof(pcrTable);
 	DWORD digestSize = SHA1_DIGEST_SIZE;
+	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 
 	if (FAILED(hr = HRESULT_FROM_WIN32(NCryptOpenStorageProvider(
 		&hProv,
@@ -125,23 +140,22 @@ PcpToolGetPCRs()
 		digestSize = SHA256_DIGEST_SIZE;
 	}
 
-	wprintf(L"<PCRs>\n");
-	if (pFile) fwprintf(pFile, L"<PCRs>\n");
+	logResult(L"<PCRs>\n");
 	for (UINT32 n = 0; n < TPM_AVAILABLE_PLATFORM_PCRS; n++)
 	{
 		PcpToolLevelPrefix(1);
-		wprintf(L"<PCR Index=\"%02u\">", n);
-		if (pFile) fwprintf(pFile, L"<PCR Index=\"%02u\">", n);
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<PCR Index=\"%02u\">", n) >= 0) {
+			logResult(message);
+		}
 		for (UINT32 m = 0; m < digestSize; m++)
 		{
-			wprintf(L"%02x", pcrTable[n * digestSize + m]);
-			if (pFile) fwprintf(pFile, L"%02x", pcrTable[n * digestSize + m]);
+			if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"%02x", pcrTable[n * digestSize + m]) >= 0) {
+				logResult(message);
+			}
 		}
-		wprintf(L"</PCR>\n");
-		if (pFile) fwprintf(pFile, L"</PCR>\n");
+		logResult(L"</PCR>\n");
 	}
-	wprintf(L"</PCRs>\n");
-	if (pFile) fwprintf(pFile, L"</PCRs>\n");
+	logResult(L"</PCRs>\n");
 
 Cleanup:
 	if (hProv != NULL)
@@ -163,6 +177,7 @@ PcpToolGetVersion()
 	NCRYPT_PROV_HANDLE hProvTpm = NULL;
 	WCHAR versionData[256] = L"";
 	DWORD cbData = 0;
+	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 
 	ZeroMemory(versionData, sizeof(versionData));
 
@@ -192,11 +207,10 @@ PcpToolGetVersion()
 	}
 	versionData[cbData / sizeof(WCHAR)] = 0x0000;
 
-	wprintf(L"<Version>\n");
-	if (pFile) fwprintf(pFile, L"<Version>\n");
-	wprintf(L"  <Provider>%s</Provider>\n", versionData);
-	if (pFile) fwprintf(pFile, L"  <Provider>%s</Provider>\n", versionData);
-
+	logResult(L"<Version>\n");
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"  <Provider>%s</Provider>\n", versionData) >= 0) {
+		logResult(message);
+	}
 	if (FAILED(hr = HRESULT_FROM_NT(NCryptGetProperty(
 		hProvTpm,
 		BCRYPT_PCP_PLATFORM_TYPE_PROPERTY,
@@ -215,10 +229,10 @@ PcpToolGetVersion()
 	}
 	versionData[cbData / sizeof(WCHAR)] = 0x0000;
 
-	wprintf(L"  <TPM>\n    %s\n  </TPM>\n", versionData);
-	if (pFile) fwprintf(pFile, L"  <TPM>\n    %s\n  </TPM>\n", versionData);
-	wprintf(L"</Version>\n");
-	if (pFile) fwprintf(pFile, L"</Version>\n");
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"  <TPM>\n    %s\n  </TPM>\n", versionData) >= 0) {
+		logResult(message);
+	}
+	logResult(L"</Version>\n");
 
 Cleanup:
 	if (hProvTpm != NULL)
@@ -431,6 +445,7 @@ PcpToolGetPlatformCounters()
 	UINT64 InitialTPMBootCount = 0L;
 	UINT64 InitialTPMEventCount = 0L;
 	UINT64 InitialTPMCounterId = 0L;
+	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 
 	if (FAILED(hr = TpmAttGetPlatformCounters(
 		&OsBootCount,
@@ -447,34 +462,40 @@ PcpToolGetPlatformCounters()
 	}
 
 	// Output results
-	wprintf(L"<PlatformCounters>\n");
-	if (pFile) fwprintf(pFile, L"<PlatformCounters>\n");
+	logResult(L"<PlatformCounters>\n");
 	PcpToolLevelPrefix(1);
-	wprintf(L"<OsBootCount>%u</OsBootCount>\n", OsBootCount);
-	if (pFile) fwprintf(pFile, L"<OsBootCount>%u</OsBootCount>\n", OsBootCount);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<OsBootCount>%u</OsBootCount>\n", OsBootCount) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(1);
-	wprintf(L"<OsResumeCount>%u</OsResumeCount>\n", OsResumeCount);
-	if (pFile) fwprintf(pFile, L"<OsResumeCount>%u</OsResumeCount>\n", OsResumeCount);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<OsResumeCount>%u</OsResumeCount>\n", OsResumeCount) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(1);
-	wprintf(L"<CurrentBootCount>%I64d</CurrentBootCount>\n", CurrentTPMBootCount);
-	if (pFile) fwprintf(pFile, L"<CurrentBootCount>%I64d</CurrentBootCount>\n", CurrentTPMBootCount);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<CurrentBootCount>%I64d</CurrentBootCount>\n", CurrentTPMBootCount) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(1);
-	wprintf(L"<CurrentEventCount>%I64d</CurrentEventCount>\n", CurrentTPMEventCount);
-	if (pFile) fwprintf(pFile, L"<CurrentEventCount>%I64d</CurrentEventCount>\n", CurrentTPMEventCount);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<CurrentEventCount>%I64d</CurrentEventCount>\n", CurrentTPMEventCount) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(1);
-	wprintf(L"<CurrentCounterId>%I64d</CurrentCounterId>\n", CurrentTPMCounterId);
-	if (pFile) fwprintf(pFile, L"<CurrentCounterId>%I64d</CurrentCounterId>\n", CurrentTPMCounterId);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<CurrentCounterId>%I64d</CurrentCounterId>\n", CurrentTPMCounterId) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(1);
-	wprintf(L"<InitialBootCount>%I64d</InitialBootCount>\n", InitialTPMBootCount);
-	if (pFile) fwprintf(pFile, L"<InitialBootCount>%I64d</InitialBootCount>\n", InitialTPMBootCount);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<InitialBootCount>%I64d</InitialBootCount>\n", InitialTPMBootCount) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(1);
-	wprintf(L"<InitialEventCount>%I64d</InitialEventCount>\n", InitialTPMEventCount);
-	if (pFile) fwprintf(pFile, L"<InitialEventCount>%I64d</InitialEventCount>\n", InitialTPMEventCount);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<InitialEventCount>%I64d</InitialEventCount>\n", InitialTPMEventCount) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(1);
-	wprintf(L"<InitialCounterId>%I64d</InitialCounterId>\n", InitialTPMCounterId);
-	if (pFile) fwprintf(pFile, L"<InitialCounterId>%I64d</InitialCounterId>\n", InitialTPMCounterId);
-	wprintf(L"</PlatformCounters>\n");
-	if (pFile) fwprintf(pFile, L"</PlatformCounters>\n");
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<InitialCounterId>%I64d</InitialCounterId>\n", InitialTPMCounterId) >= 0) {
+		logResult(message);
+	}
+	logResult(L"</PlatformCounters>\n");
 
 Cleanup:
 	PcpToolCallResult(L"PcpToolGetPlatformCounters", hr);
@@ -494,6 +515,7 @@ PcpToolDisplayKey(
 	BCRYPT_RSAKEY_BLOB* pKey = (BCRYPT_RSAKEY_BLOB*)pbKey;
 	BYTE pubKeyDigest[20] = { 0 };
 	UINT32 cbRequired = 0;
+	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 
 	// Parameter check
 	if ((pbKey == NULL) ||
@@ -509,75 +531,68 @@ PcpToolDisplayKey(
 	}
 
 	PcpToolLevelPrefix(level);
-	wprintf(L"<RSAKey size=\"%u\"", cbKey);
-	if (pFile) fwprintf(pFile, L"<RSAKey size=\"%u\"", cbKey);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<RSAKey size=\"%u\"", cbKey) >= 0) {
+		logResult(message);
+	}
 	if ((lpKeyName != NULL) &&
 		(wcslen(lpKeyName) != 0))
 	{
-		wprintf(L" keyName=\"%s\"", lpKeyName);
-		if (pFile) fwprintf(pFile, L" keyName=\"%s\"", lpKeyName);
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L" keyName=\"%s\"", lpKeyName) >= 0) {
+			logResult(message);
+		}
 	}
-	wprintf(L">\n");
-	if (pFile) fwprintf(pFile, L">\n");
+	logResult(L">\n");
 
 	PcpToolLevelPrefix(level + 1);
-	wprintf(L"<Magic>%c%c%c%c<!-- 0x%08x --></Magic>\n",
-		((PBYTE)&pKey->Magic)[0],
-		((PBYTE)&pKey->Magic)[1],
-		((PBYTE)&pKey->Magic)[2],
-		((PBYTE)&pKey->Magic)[3],
-		pKey->Magic);
-	if (pFile) fwprintf(pFile, L"<Magic>%c%c%c%c<!-- 0x%08x --></Magic>\n",
-		((PBYTE)&pKey->Magic)[0],
-		((PBYTE)&pKey->Magic)[1],
-		((PBYTE)&pKey->Magic)[2],
-		((PBYTE)&pKey->Magic)[3],
-		pKey->Magic);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Magic>%c%c%c%c<!-- 0x%08x --></Magic>\n",
+		((PBYTE)&pKey->Magic)[0], ((PBYTE)&pKey->Magic)[1], ((PBYTE)&pKey->Magic)[2], ((PBYTE)&pKey->Magic)[3], pKey->Magic) >= 0) {
+		logResult(message);
+	}
+
 
 	PcpToolLevelPrefix(level + 1);
-	wprintf(L"<BitLength>%u</BitLength>\n", pKey->BitLength);
-	if (pFile) fwprintf(pFile, L"<BitLength>%u</BitLength>\n", pKey->BitLength);
-
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<BitLength>%u</BitLength>\n", pKey->BitLength) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(level + 1);
-	wprintf(L"<PublicExp size=\"%u\">\n", pKey->cbPublicExp);
-	if (pFile) fwprintf(pFile, L"<PublicExp size=\"%u\">\n", pKey->cbPublicExp);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<PublicExp size=\"%u\">\n", pKey->cbPublicExp) >= 0) {
+		logResult(message);
+	}
 	PcpToolLevelPrefix(level + 2);
 	for (UINT32 n = 0; n < pKey->cbPublicExp; n++)
 	{
-		wprintf(L"%02x", pbKey[sizeof(BCRYPT_RSAKEY_BLOB) + n]);
-		if (pFile) fwprintf(pFile, L"%02x", pbKey[sizeof(BCRYPT_RSAKEY_BLOB) + n]);
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"%02x", pbKey[sizeof(BCRYPT_RSAKEY_BLOB) + n]) >= 0) {
+			logResult(message);
+		}
 	}
-	wprintf(L"\n");
-	if (pFile) fwprintf(pFile, L"\n");
+	logResult(L"\n");
 	PcpToolLevelPrefix(level + 1);
-	wprintf(L"</PublicExp>\n");
-	if (pFile) fwprintf(pFile, L"</PublicExp>\n");
+	logResult(L"</PublicExp>\n");
 
 	PcpToolLevelPrefix(level + 1);
-	wprintf(L"<Modulus size=\"%u\" digest=\"", pKey->cbModulus);
-	if (pFile) fwprintf(pFile, L"<Modulus size=\"%u\" digest=\"", pKey->cbModulus);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Modulus size=\"%u\" digest=\"", pKey->cbModulus) >= 0) {
+		logResult(message);
+	}
 	for (UINT32 n = 0; n < sizeof(pubKeyDigest); n++)
 	{
-		wprintf(L"%02x", pubKeyDigest[n]);
-		if (pFile) fwprintf(pFile, L"%02x", pubKeyDigest[n]);
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"%02x", pubKeyDigest[n]) >= 0) {
+			logResult(message);
+		}
 	}
-	wprintf(L"\">\n");
-	if (pFile) fwprintf(pFile, L"\">\n");
+	logResult(L"\">\n");
 	PcpToolLevelPrefix(level + 2);
 	for (UINT32 n = 0; n < pKey->cbModulus; n++)
 	{
-		wprintf(L"%02x", pbKey[sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp + n]);
-		if (pFile) fwprintf(pFile, L"%02x", pbKey[sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp + n]);
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"%02x", pbKey[sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp + n]) >= 0) {
+			logResult(message);
+		}
 	}
-	wprintf(L"\n");
-	if (pFile) fwprintf(pFile, L"\n");
+	logResult(L"\n");
 	PcpToolLevelPrefix(level + 1);
-	wprintf(L"</Modulus>\n");
-	if (pFile) fwprintf(pFile, L"</Modulus>\n");
+	logResult(L"</Modulus>\n");
 
 	PcpToolLevelPrefix(level);
-	wprintf(L"</RSAKey>\n");
-	if (pFile) fwprintf(pFile, L"</RSAKey>\n");
+	logResult(L"</RSAKey>\n");
 
 Cleanup:
 	return hr;
@@ -652,10 +667,10 @@ Cleanup:
 HRESULT
 PcpToolGetSystemInfo() {
 	HRESULT hr = S_OK;
+	CHAR message[MAX_LOG_MESSAGE_LENGTH];
 
 	// Device unique ID (generated randomly, stored in file and reused)
-	wprintf(L"<DeviceUniqueID>");
-	if (pFile) fwprintf(pFile, L"<DeviceUniqueID>");
+	logResult(L"<DeviceUniqueID>");
 	const size_t deviceIDLen = 16;
 	char	deviceID[deviceIDLen + 1] = {0};
 	FILE* idFile = NULL;
@@ -663,8 +678,9 @@ PcpToolGetSystemInfo() {
 	if (idFile) {
 		// File with unique id already exists, use the value
 		size_t deviceIDRealLen = fread_s(deviceID, deviceIDLen, 1, deviceIDLen, idFile);
-		printf("%s", deviceID);
-		if (pFile) fwrite(deviceID, deviceIDRealLen, sizeof(BYTE), pFile);
+		if (sprintf_s(message, MAX_LOG_MESSAGE_LENGTH, "%s", deviceID) >= 0) {
+			logResult(message);
+		}
 		fclose(idFile);
 	}
 	else {
@@ -679,24 +695,22 @@ PcpToolGetSystemInfo() {
 			fclose(idFile);
 		}
 		// Use newly generated ID
-		printf("%s", deviceID);
-		if (pFile) fwrite(deviceID, deviceIDLen, sizeof(BYTE), pFile);
+		if (sprintf_s(message, MAX_LOG_MESSAGE_LENGTH, "%s", deviceID) >= 0) {
+			logResult(message);
+		}
 	}
-	wprintf(L"</DeviceUniqueID>\n");
-	if (pFile) fwprintf(pFile, L"</DeviceUniqueID>\n");
+	logResult(L"</DeviceUniqueID>\n");
 
 	const size_t systemInfoCmdLen = 1000;
 	WCHAR systemInfoCmd[systemInfoCmdLen];
 	swprintf_s(systemInfoCmd, systemInfoCmdLen, L"systeminfo | findstr /B /C:\"OS Name\" /C:\"OS Version\" /C:\"OS Manufacturer\" /C:\"OS Configuration\" /C:\"OS Build Type\" /C:\"Original Install Date\" /C:\"System Boot Time\" /C:\"System Manufacturer\" /C:\"System Model\" /C:\"System Type\" /C:\"Processor(s)\" /C:\"BIOS Version\" >> %s", fileName);
-	wprintf(L"<SystemInfo>\n");
+	logResult(L"<SystemInfo>\n");
 	if (pFile) {
-		fwprintf(pFile, L"<SystemInfo>\n");
 		fclose(pFile); // close file temporarily to allow for system command write
 		_wsystem(systemInfoCmd);
 		_wfopen_s(&pFile, fileName, L"a");
 	}
-	wprintf(L"</SystemInfo>\n");
-	if (pFile) fwprintf(pFile, L"</SystemInfo>\n");
+	logResult(L"</SystemInfo>\n");
 
 	SYSTEM_INFO sysInfo;
 	GetNativeSystemInfo(&sysInfo);
@@ -704,8 +718,8 @@ PcpToolGetSystemInfo() {
 	return hr;
 }
 
-void PrepareMeasurementFiles(_In_ int argc,
-_In_reads_(argc) WCHAR* argv[]) {
+void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
+	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 	SYSTEMTIME st;
 	FILETIME ft;
 	GetSystemTime(&st);
@@ -721,18 +735,19 @@ _In_reads_(argc) WCHAR* argv[]) {
 	}
 	_wfopen_s(&pFile, fileName, L"w");
 
-	wprintf(L"<Measurement>\n");
-	if (pFile) fwprintf(pFile, L"<Measurement>\n");
+	logResult(L"<Measurement>\n");
 
-	wprintf(L"<Version>%s</Version>\n", TPM_PCR_VERSION);
-	if (pFile) fwprintf(pFile, L"<Version>%s</Version>\n", TPM_PCR_VERSION);
-	
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Version>%s</Version>\n", TPM_PCR_VERSION) >= 0) {
+		logResult(message);
+	}
 
 	// Time
-	wprintf(L"<Time>%04d-%02d-%02d_%02d%02d</Time>\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
-	if (pFile) fwprintf(pFile, L"<Time>%04d-%02d-%02d_%02d%02d</Time>\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
-	wprintf(L"<TimeUnix>%04d_%04d</TimeUnix>\n", ft.dwHighDateTime, ft.dwLowDateTime);
-	if (pFile) fwprintf(pFile, L"<TimeUnix>%04d_%04d</TimeUnix>\n", ft.dwHighDateTime, ft.dwLowDateTime);
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Time>%04d-%02d-%02d_%02d%02d</Time>\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute) >= 0) {
+		logResult(message);
+	}
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<TimeUnix>%04d_%04d</TimeUnix>\n", ft.dwHighDateTime, ft.dwLowDateTime) >= 0) {
+		logResult(message);
+	}
 }
 
 void printHelp() {
@@ -762,8 +777,7 @@ void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll
 		PcpToolGetEK_RSK(); // Requires admin rights to succeed
 	}
 
-	wprintf(L"</Measurement>\n");
-	if (pFile) fwprintf(pFile, L"</Measurement>\n");
+	logResult(L"</Measurement>\n");
 
 	fclose(pFile);
 }
