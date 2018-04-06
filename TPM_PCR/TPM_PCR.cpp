@@ -24,6 +24,9 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 
 #define TPM_PCR_VERSION L"0.1.0"
 
+// #define DLL_TPM_PCR will cause to restrict code only to limited set of functions 
+// used inside dll version of collector with output only returned as string instead of storage into file    
+// #define DLL_TPM_PCR
 
 #define TPM_AVAILABLE_PLATFORM_PCRS (24)
 #define SHA1_DIGEST_SIZE   (20)
@@ -37,14 +40,13 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #define DEVICE_UNIQUE_ID_FILENAME L"unique_device_id.txt"
 
 const size_t DEVICE_ID_LENGTH = 16;
-
 const size_t MAX_LOG_MESSAGE_LENGTH = 1000;
-//const int MAX_FILE_NAME = MAX_PATH;
 WCHAR fileName[MAX_PATH + 1]; // file name for measurement storage
 WCHAR deviceIDFileName[MAX_PATH + 1] = { 0 }; // file name for unique device ID
 FILE * pFile = NULL; // Used inside all functions if not null
 WCHAR currentDir[MAX_PATH + 1] = {0};
 
+#ifndef DLL_TPM_PCR
 /*++
 Log provided string to stdout and file (if opened) - unicode version
 --*/
@@ -59,11 +61,42 @@ void logResult(const CHAR* message) {
 	printf(message);
 	if (pFile) fprintf(pFile, message);
 }
+#endif
 
+/*++
+Insert basic measurement info header
+--*/
+void InsertMeasurementHeader(const SYSTEMTIME* st, const FILETIME* ft) {
+	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
+
+	logResult(L"<Measurement>\n");
+	// Version
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Version>%s</Version>\n", TPM_PCR_VERSION) >= 0) {
+		logResult(message);
+	}
+	// Time
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Time>%04d-%02d-%02d_%02d%02d</Time>\n", st->wYear, st->wMonth, st->wDay, st->wHour, st->wMinute) >= 0) {
+		logResult(message);
+	}
+	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<TimeUnix>%04d_%04d</TimeUnix>\n", ft->dwHighDateTime, ft->dwLowDateTime) >= 0) {
+		logResult(message);
+	}
+}
+
+/*++
+Insert basic measurement info footer
+--*/
+void InsertMeasurementFooter() {
+	logResult(L"</Measurement>\n");
+}
+
+
+
+#ifndef DLL_TPM_PCR
 /*++
 Packs all files with measurements into single zip file
 --*/
-HRESULT packMeasurements() {
+HRESULT PackMeasurements() {
 	HRESULT hr = S_OK;
 
 	WIN32_FIND_DATA ffd;
@@ -141,13 +174,12 @@ HRESULT packMeasurements() {
 
 	return hr;
 }
+#endif
 
-void PcpToolLevelPrefix(
-	UINT32 level
-	)
 /*++
 Inserts indentation into output
 --*/
+void PcpToolLevelPrefix(UINT32 level)
 {
 	for (UINT32 n = 0; n < level; n++)
 	{
@@ -155,15 +187,13 @@ Inserts indentation into output
 	}
 }
 
-
-
+/*++
+Process function result status code and print personalized message accordingly
+--*/
 void PcpToolCallResult(
 	_In_ WCHAR* func,
 	HRESULT hr
 	)
-/*++
-Process function result status code and print personalized message accordingly
---*/ 
 {
 	PWSTR Buffer = NULL;
 	DWORD result = 0;
@@ -204,10 +234,10 @@ Process function result status code and print personalized message accordingly
 	}
 }
 
-HRESULT PcpToolGetPCRs()
 /*++
 Obtains values of Platform Counter Registers
 --*/
+HRESULT PcpToolGetPCRs()
 {
 	HRESULT hr = S_OK;
 	PCWSTR fileName = NULL;
@@ -267,10 +297,10 @@ Cleanup:
 	return hr;
 }
 
+/*++
+Retrieve the version strings from the PCP provider and the TPM.
+--*/
 HRESULT PcpToolGetVersion()
-	/*++
-	Retrieve the version strings from the PCP provider and the TPM.
-	--*/
 {
 	HRESULT hr = S_OK;
 	NCRYPT_PROV_HANDLE hProvTpm = NULL;
@@ -603,7 +633,7 @@ Cleanup:
 	return hr;
 }
 
-
+#ifndef DLL_TPM_PCR
 /*++
 Prints provided key in human readable format
 --*/
@@ -831,7 +861,8 @@ void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
 	FILETIME ft;
 	GetSystemTime(&st);
 	SystemTimeToFileTime(&st, &ft);
-	// File name format: PCRs_2018-03-30_1957.txt (YYY-MM-DD_HHMM)
+
+	// File name format (PCR_YYYY-MM-DD_HHMM): PCR_2018-03-30_1957.txt 
 	if (argc > 2) {
 		// Save target directory
 		wcscpy_s(currentDir, MAX_PATH, argv[2]); 
@@ -846,22 +877,11 @@ void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
 	}
 	_wfopen_s(&pFile, fileName, L"w");
 
-	logResult(L"<Measurement>\n");
-
-	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Version>%s</Version>\n", TPM_PCR_VERSION) >= 0) {
-		logResult(message);
-	}
-
-	// Time
-	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<Time>%04d-%02d-%02d_%02d%02d</Time>\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute) >= 0) {
-		logResult(message);
-	}
-	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<TimeUnix>%04d_%04d</TimeUnix>\n", ft.dwHighDateTime, ft.dwLowDateTime) >= 0) {
-		logResult(message);
-	}
+	// Standard header
+	InsertMeasurementHeader(&st, &ft);
 }
 
-void printHelp() {
+void PrintHelp() {
 	wprintf(L"TPM_PCR - a tool for collection of Trusted Platform Module data for research purposes.\n");
 	wprintf(L"2018, CRoCS MUNI.\n");
 	wprintf(L"Usage: TPM_PCR.exe collect ... collects basic TPM data, store in current folder\n");
@@ -877,7 +897,7 @@ void printHelp() {
 /*++
 Collects all required data 
 --*/
-void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll) {
+void CollectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll) {
 	PrepareMeasurementFiles(argc, argv);
 
 	// System info via systeminfo tool
@@ -889,15 +909,16 @@ void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll
 	PcpToolGetPlatformCounters();
 
 	if (bCollectAll) {
-		PcpToolGetEK_RSK(); // Requires admin rights to succeed
+		PcpToolGetEK_RSK(); // typically requires admin rights to succeed
 	}
 
-	logResult(L"</Measurement>\n");
+	InsertMeasurementFooter();
 
+	// Close measurement file
 	fclose(pFile);
 
 	// Pack all existing measurements into single zip file
-	packMeasurements();
+	PackMeasurements();
 }
 
 /*++
@@ -935,18 +956,18 @@ int __cdecl wmain(_In_ int argc,
 		(!_wcsicmp(argv[1], L"/h")) ||
 		(!_wcsicmp(argv[1], L"-h")))
 	{
-		printHelp();
+		PrintHelp();
 	}
 	else
 	{
 		WCHAR* command = argv[1];
 		if (!_wcsicmp(command, L"collect"))
 		{
-			collectData(argc, argv, false);
+			CollectData(argc, argv, false);
 		}
 		else if (!_wcsicmp(command, L"collectall"))
 		{
-			collectData(argc, argv, true);
+			CollectData(argc, argv, true);
 		}
 		else if (!_wcsicmp(command, L"schedule"))
 		{
@@ -962,4 +983,7 @@ int __cdecl wmain(_In_ int argc,
 		}
 	}
 }
+
+#endif
+
 
