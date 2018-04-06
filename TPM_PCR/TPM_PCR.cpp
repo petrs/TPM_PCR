@@ -145,7 +145,7 @@ HRESULT PackMeasurements() {
 			filesize.LowPart = ffd.nFileSizeLow;
 			filesize.HighPart = ffd.nFileSizeHigh;
 
-			BYTE*	data = new BYTE[filesize.QuadPart];
+			BYTE*	data = new BYTE[(size_t)filesize.QuadPart];
 			size_t readed = 0;
 			FILE* hFile = NULL;
 			TCHAR fullFileName[MAX_PATH] = { 0 };
@@ -153,7 +153,7 @@ HRESULT PackMeasurements() {
 			_wfopen_s(&hFile, fullFileName, L"r");
 			if (hFile) {
 				// read content of file
-				readed = fread_s(data, filesize.QuadPart, sizeof(BYTE), filesize.QuadPart, hFile);
+				readed = fread_s(data, (size_t) filesize.QuadPart, sizeof(BYTE), (size_t) filesize.QuadPart, hFile);
 				fclose(hFile);
 
 				// Store into zip
@@ -305,6 +305,7 @@ HRESULT PcpToolGetVersion()
 	HRESULT hr = S_OK;
 	NCRYPT_PROV_HANDLE hProvTpm = NULL;
 	WCHAR versionData[256] = L"";
+	WCHAR fwVersion[256] = L"";
 	DWORD cbData = 0;
 	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 
@@ -361,6 +362,53 @@ HRESULT PcpToolGetVersion()
 	if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"  <TPM>\n    %s\n  </TPM>\n", versionData) >= 0) {
 		logResult(message);
 	}
+
+
+	// Some heuristics to parse firmware version
+	// INTC Firmware:720904.3280226 -> 11.8.50.3426
+	// 720904_decadic => B0008_hex => 11.8.
+	// 3280226_decadic => 320D62_hex => 50.3426 
+
+	// Find firmware code itself
+	WCHAR* firmware1 = wcsstr(versionData, L"Firmware:");
+	firmware1 += wcslen(L"Firmware:");
+
+	// Extract minor/major
+	long int i1 = wcstol(firmware1, &firmware1, 10); 
+	firmware1++; // skip .
+	long int i2 = wcstol(firmware1, &firmware1, 10);
+	int major1 = i1 >> 16 & 0xff;
+	int major2 = i1 & 0xffff;
+	int minor1 = i2 >> 16 & 0xff;
+	int minor2 = i2 & 0xffff;
+
+	// Extract VendorID
+	WCHAR* vendor = wcsstr(versionData, L"VendorID:'");
+	if (vendor != NULL) {
+		vendor += wcslen(L"VendorID:'");
+		WCHAR* vendorEnd = wcsstr(vendor, L"'");
+		if (vendorEnd != NULL) {
+			vendorEnd[0] = 0x00;
+		}
+		else {
+			vendor = L"?";
+		}
+	}
+	else {
+		vendor = L"?";
+	}
+
+	if (major1 != 0 && minor1 != 0) {
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"  <FirmwareVersion>%s %d.%d.%d.%d</FirmwareVersion>\n", vendor, major1, major2, minor1, minor2) >= 0) {
+			logResult(message);
+		}
+	}
+	else {
+		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"  <FirmwareVersion>%s %d.%d</FirmwareVersion>\n", vendor, major2, minor2) >= 0) {
+			logResult(message);
+		}
+	}
+
 	logResult(L"</Version>\n");
 
 Cleanup:
@@ -856,7 +904,6 @@ HRESULT PcpToolGetSystemInfo() {
 Prepares necessary files for storage of measurement info
 --*/
 void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
-	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 	SYSTEMTIME st;
 	FILETIME ft;
 	GetSystemTime(&st);
@@ -979,7 +1026,9 @@ int __cdecl wmain(_In_ int argc,
 		}
 		else
 		{
-			wprintf(L"Command not found.");
+			wprintf(L"Command not found.\n");
+
+			PrintHelp();
 		}
 	}
 }
