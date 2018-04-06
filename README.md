@@ -11,7 +11,7 @@ A tool for the unattended collection of [Trusted Platform Module](https://en.wik
 ```
 TPM_PCR.exe collect
 ```
-3. Investigate the resulting file (PCR_xxx_xxx.txt)
+3. Investigate the resulting file (e.g., PCR_2018-04-05_1300.txt)
 
 ## Repeated run using Windows task scheduler
 The PCRs are occasionally changing based on software updates and other platform changes. The data collection can be scheduled to run automatically every day using Windows task scheduler using the following command executed from (example: run every day at 7 pm, task name is tpm_pcr_collect).
@@ -30,6 +30,7 @@ TPM_PCR.exe unschedule
 Alternatively, task scheduler can be directly called:
 ```
 schtasks.exe /Create /SC DAILY /ST 20:00 /TN tpm_pcr_collect /TR "%cd%\TPM_PCR.exe collect %cd%"
+schtasks.exe /Delete /TN tpm_pcr_collect
 ```
 
 ## Example result
