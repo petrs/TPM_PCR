@@ -382,6 +382,7 @@ HRESULT PcpToolGetVersion()
 	int minor1 = i2 >> 16 & 0xff;
 	int minor2 = i2 & 0xffff;
 
+
 	// Extract VendorID
 	WCHAR* vendor = wcsstr(versionData, L"VendorID:'");
 	if (vendor != NULL) {
@@ -971,18 +972,27 @@ void CollectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll
 /*++
 Schedule automatic collection of data using Windows Task Scheduler
 --*/
-HRESULT schedule(bool bSchedule) {
+HRESULT schedule(const WCHAR* appName, bool bSchedule) {
 	HRESULT hr = S_OK;
 
+	wprintf(L"AppName: '%s'", appName);
 	if (bSchedule) {
 		wprintf(L"Scheduling repeated executing every day at 7pm (name of task is tpm_pcr_collect)... ");
-		WCHAR systemInfoCmd[] = L"schtasks.exe /Create /SC DAILY /ST 19:00 /TN tpm_pcr_collect /TR \"%cd%\\TPM_PCR.exe collect %cd%\"";
-		hr = _wsystem(systemInfoCmd);
+		WCHAR scheduleCmd[MAX_LOG_MESSAGE_LENGTH] = { 0 };
+		if (wcsstr(appName, L":") != NULL) {
+			// appName already contains full path
+			swprintf_s(scheduleCmd, MAX_LOG_MESSAGE_LENGTH, L"schtasks.exe /Create /SC DAILY /ST 19:00 /TN tpm_pcr_collect /TR \"%s collect %s\"", appName, L"%cd%");
+		}
+		else {
+			// appName contains just the executable name
+			swprintf_s(scheduleCmd, MAX_LOG_MESSAGE_LENGTH, L"schtasks.exe /Create /SC DAILY /ST 19:00 /TN tpm_pcr_collect /TR \"%s\\%s collect %s\"", L"%cd%", appName, L"%cd%");
+		}
+		hr = _wsystem(scheduleCmd);
 	}
 	else {
 		wprintf(L"Remove scheduled task with name 'tpm_pcr_collect'... ");
-		WCHAR systemInfoCmd[] = L"schtasks.exe /Delete /TN tpm_pcr_collect";
-		hr = _wsystem(systemInfoCmd);
+		WCHAR unscheduleCmd[] = L"schtasks.exe /Delete /TN tpm_pcr_collect";
+		hr = _wsystem(unscheduleCmd);
 	}
 
 	if (FAILED(hr)) {
@@ -1018,11 +1028,11 @@ int __cdecl wmain(_In_ int argc,
 		}
 		else if (!_wcsicmp(command, L"schedule"))
 		{
-			schedule(true);
+			schedule(argv[0], true);
 		}
 		else if (!_wcsicmp(command, L"unschedule"))
 		{
-			schedule(false);
+			schedule(argv[0], false);
 		}
 		else
 		{
