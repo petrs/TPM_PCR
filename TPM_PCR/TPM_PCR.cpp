@@ -1029,6 +1029,7 @@ int __cdecl wmain(_In_ int argc,
 		else if (!_wcsicmp(command, L"schedule"))
 		{
 			schedule(argv[0], true);
+			CollectData(argc, argv, false); // Collect data after schedule to verify functionality
 		}
 		else if (!_wcsicmp(command, L"unschedule"))
 		{
