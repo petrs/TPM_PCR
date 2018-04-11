@@ -46,6 +46,9 @@ WCHAR deviceIDFileName[MAX_PATH + 1] = { 0 }; // file name for unique device ID
 FILE * pFile = NULL; // Used inside all functions if not null
 WCHAR currentDir[MAX_PATH + 1] = {0};
 
+CHAR* schedule_xml = "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n <Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n<RegistrationInfo>\n<Date>2018-04-08T19:58:44</Date>\n<Author>crocs</Author>\n<URI>\\TPM_PCR</URI>\n</RegistrationInfo>\n<Triggers>\n<CalendarTrigger>\n<StartBoundary>2018-04-08T19:00:00</StartBoundary>\n<Enabled>true</Enabled>\n<ScheduleByDay>\n<DaysInterval>1</DaysInterval>\n</ScheduleByDay>\n</CalendarTrigger>\n</Triggers>\n<Principals>\n<Principal id=\"Author\">\n<LogonType>InteractiveToken</LogonType>\n<RunLevel>LeastPrivilege</RunLevel>\n</Principal>\n</Principals>\n<Settings>\n<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n<StopIfGoingOnBatteries>true</StopIfGoingOnBatteries>\n<AllowHardTerminate>true</AllowHardTerminate>\n<StartWhenAvailable>true</StartWhenAvailable>\n<RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>\n<IdleSettings>\n<StopOnIdleEnd>true</StopOnIdleEnd>\n<RestartOnIdle>false</RestartOnIdle>\n</IdleSettings>\n<AllowStartOnDemand>true</AllowStartOnDemand>\n<Enabled>true</Enabled>\n<Hidden>false</Hidden>\n<RunOnlyIfIdle>false</RunOnlyIfIdle>\n<WakeToRun>false</WakeToRun>\n<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>\n<Priority>7</Priority>\n</Settings>\n<Actions Context=\"Author\">\n<Exec>\n<Command>%ws</Command>\n<Arguments>collect %ws</Arguments>\n</Exec>\n</Actions>\n</Task>";
+const size_t MAX_SCHEDULE_XML_LENGTH = 4000 + 2 * MAX_PATH; // length of schedule_xml + space for two paths filled in later
+
 #ifndef DLL_TPM_PCR
 /*++
 Log provided string to stdout and file (if opened) - unicode version
@@ -975,10 +978,42 @@ Schedule automatic collection of data using Windows Task Scheduler
 HRESULT schedule(const WCHAR* appName, bool bSchedule) {
 	HRESULT hr = S_OK;
 
-	wprintf(L"AppName: '%s'", appName);
+	WCHAR taskName[] = L"tpm_pcr_collect";
+
 	if (bSchedule) {
-		wprintf(L"Scheduling repeated executing every day at 7pm (name of task is tpm_pcr_collect)... ");
+		WCHAR fullPath[MAX_PATH] = {0};
+		DWORD len = MAX_PATH - 1;
+		WCHAR fullPathDir[MAX_PATH] = { 0 };
+		// Full path to exe
+		GetModuleFileName(NULL, fullPath, len); 
+		// Directory to exe
+		GetModuleFileName(NULL, fullPathDir, len); 
+		wcsncpy_s(fullPathDir, len, fullPath, wcsrchr(fullPath, '\\') - fullPath + 1);
+		fullPathDir[wcslen(fullPathDir)] = '\0';
+
+		// Format xml task and write to file 
+		CHAR xmlFileContent[MAX_SCHEDULE_XML_LENGTH];
+		sprintf_s(xmlFileContent, MAX_SCHEDULE_XML_LENGTH, schedule_xml, fullPath, fullPathDir);
+		FILE*	xmlFile = NULL;
+		WCHAR*	xmlFileName = L"tpm_pcr_task.xml";
+		_wfopen_s(&xmlFile, xmlFileName, L"w");
+		if (xmlFile) {
+			fwrite(xmlFileContent, sizeof(CHAR), strlen(xmlFileContent), xmlFile);
+			fclose(xmlFile);
+		}
+
+		// Prepare scheduler command from xml file
 		WCHAR scheduleCmd[MAX_LOG_MESSAGE_LENGTH] = { 0 };
+
+		swprintf_s(scheduleCmd, MAX_LOG_MESSAGE_LENGTH, L"schtasks /delete /TN \"%s\"", taskName);
+		wprintf(L"Deleting previously scheduled task (name of task is '%s')... ", taskName);
+		hr = _wsystem(scheduleCmd);
+
+		swprintf_s(scheduleCmd, MAX_LOG_MESSAGE_LENGTH, L"schtasks /create /TN \"%s\" /xml \"%s\"", taskName, xmlFileName);
+		wprintf(L"Scheduling repeated executing every day at 7pm (name of task is '%s')... ", taskName);
+		hr = _wsystem(scheduleCmd);
+
+/* Older version with direct scheduling, but unable to set all parameters
 		if (wcsstr(appName, L":") != NULL) {
 			// appName already contains full path
 			swprintf_s(scheduleCmd, MAX_LOG_MESSAGE_LENGTH, L"schtasks.exe /Create /SC DAILY /ST 19:00 /TN tpm_pcr_collect /TR \"%s collect %s\"", appName, L"%cd%");
@@ -988,10 +1023,12 @@ HRESULT schedule(const WCHAR* appName, bool bSchedule) {
 			swprintf_s(scheduleCmd, MAX_LOG_MESSAGE_LENGTH, L"schtasks.exe /Create /SC DAILY /ST 19:00 /TN tpm_pcr_collect /TR \"%s\\%s collect %s\"", L"%cd%", appName, L"%cd%");
 		}
 		hr = _wsystem(scheduleCmd);
+*/
 	}
 	else {
-		wprintf(L"Remove scheduled task with name 'tpm_pcr_collect'... ");
-		WCHAR unscheduleCmd[] = L"schtasks.exe /Delete /TN tpm_pcr_collect";
+		wprintf(L"Remove scheduled task with name '%s'... ", taskName);
+		WCHAR unscheduleCmd[MAX_LOG_MESSAGE_LENGTH] = { 0 };
+		swprintf_s(unscheduleCmd, MAX_LOG_MESSAGE_LENGTH, L"schtasks.exe /Delete /TN %s", taskName);
 		hr = _wsystem(unscheduleCmd);
 	}
 
@@ -999,6 +1036,7 @@ HRESULT schedule(const WCHAR* appName, bool bSchedule) {
 		wprintf(L"failed\n");
 		wprintf(L"You may try to remove task 'tpm_pcr_collect' manually by running Task Scheduler\n");
 	}
+	wprintf(L"\n");
 	return hr;
 }
 
