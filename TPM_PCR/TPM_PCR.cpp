@@ -22,7 +22,7 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #include "stdafx.h"
 #include "miniz.h"
 
-#define TPM_PCR_VERSION L"0.1.0"
+#define TPM_PCR_VERSION L"0.1.4"
 
 // #define DLL_TPM_PCR will cause to restrict code only to limited set of functions 
 // used inside dll version of collector with output only returned as string instead of storage into file    
@@ -947,6 +947,14 @@ void PrintHelp() {
 	wprintf(L"and optionally EK and RSK public key.The measurement is stored into file PCR_date_time.txt(e.g., 'PCR_2018-03-31_1915.txt').\n");
 }
 
+void PrintInfo() {
+	wprintf(L"****************************************************************************************************\n");
+	wprintf(L"TPM_PCR - a tool for collection of Trusted Platform Module data for research purposes.\n");
+	wprintf(L"2018, CRoCS MUNI.\n");
+	wprintf(L"\nIf you want to unschedule periodic runs, please visit https://github.com/petrs/TPM_PCR for howto.\n");
+	wprintf(L"****************************************************************************************************\n");
+}
+
 /*++
 Collects all required data 
 --*/
@@ -1046,6 +1054,7 @@ HRESULT schedule(const WCHAR* appName, bool bSchedule) {
 int __cdecl wmain(_In_ int argc,
 	_In_reads_(argc) WCHAR* argv[])
 {
+	PrintInfo();
 
 	if ((argc <= 1) ||
 		(!wcscmp(argv[1], L"/?")) ||
