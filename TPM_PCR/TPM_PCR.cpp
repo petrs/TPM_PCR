@@ -948,11 +948,12 @@ void PrintHelp() {
 }
 
 void PrintInfo() {
-	wprintf(L"****************************************************************************************************\n");
-	wprintf(L"TPM_PCR - a tool for collection of Trusted Platform Module data for research purposes.\n");
-	wprintf(L"2018, CRoCS MUNI.\n");
-	wprintf(L"\nIf you want to unschedule periodic runs, please visit https://github.com/petrs/TPM_PCR for howto.\n");
-	wprintf(L"****************************************************************************************************\n");
+	wprintf(L"*******************************************************************\n");
+	wprintf(L"TPM_PCR - a tool for collection of Trusted Platform Module data\n");
+	wprintf(L"for research purposes.\n2018, CRoCS MUNI.\n");
+	wprintf(L"\nIf you want to unschedule periodic runs, please visit\n");
+	wprintf(L"https://github.com/petrs/TPM_PCR for howto.\n");
+	wprintf(L"*******************************************************************\n");
 }
 
 /*++
