@@ -41,13 +41,14 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 
 const size_t DEVICE_ID_LENGTH = 16;
 const size_t MAX_LOG_MESSAGE_LENGTH = 1000;
-WCHAR fileName[MAX_PATH + 1]; // file name for measurement storage
-WCHAR deviceIDFileName[MAX_PATH + 1] = { 0 }; // file name for unique device ID
+const size_t MAX_PATH_LENGTH = 10000;
+WCHAR fileName[MAX_PATH_LENGTH + 1]; // file name for measurement storage
+WCHAR deviceIDFileName[MAX_PATH_LENGTH + 1] = { 0 }; // file name for unique device ID
 FILE * pFile = NULL; // Used inside all functions if not null
-WCHAR currentDir[MAX_PATH + 1] = {0};
+WCHAR currentDir[MAX_PATH_LENGTH + 1] = {0};
 
 CHAR* schedule_xml = "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n <Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n<RegistrationInfo>\n<Date>2018-04-08T19:58:44</Date>\n<Author>crocs</Author>\n<URI>\\TPM_PCR</URI>\n</RegistrationInfo>\n<Triggers>\n<CalendarTrigger>\n<StartBoundary>2018-04-08T19:00:00</StartBoundary>\n<Enabled>true</Enabled>\n<ScheduleByDay>\n<DaysInterval>1</DaysInterval>\n</ScheduleByDay>\n</CalendarTrigger>\n</Triggers>\n<Principals>\n<Principal id=\"Author\">\n<LogonType>InteractiveToken</LogonType>\n<RunLevel>LeastPrivilege</RunLevel>\n</Principal>\n</Principals>\n<Settings>\n<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n<StopIfGoingOnBatteries>true</StopIfGoingOnBatteries>\n<AllowHardTerminate>true</AllowHardTerminate>\n<StartWhenAvailable>true</StartWhenAvailable>\n<RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>\n<IdleSettings>\n<StopOnIdleEnd>true</StopOnIdleEnd>\n<RestartOnIdle>false</RestartOnIdle>\n</IdleSettings>\n<AllowStartOnDemand>true</AllowStartOnDemand>\n<Enabled>true</Enabled>\n<Hidden>false</Hidden>\n<RunOnlyIfIdle>false</RunOnlyIfIdle>\n<WakeToRun>false</WakeToRun>\n<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>\n<Priority>7</Priority>\n</Settings>\n<Actions Context=\"Author\">\n<Exec>\n<Command>%ws</Command>\n<Arguments>collect %ws</Arguments>\n</Exec>\n</Actions>\n</Task>";
-const size_t MAX_SCHEDULE_XML_LENGTH = 4000 + 2 * MAX_PATH; // length of schedule_xml + space for two paths filled in later
+const size_t MAX_SCHEDULE_XML_LENGTH = 4000 + 2 * MAX_PATH_LENGTH; // length of schedule_xml + space for two paths filled in later
 
 #ifndef DLL_TPM_PCR
 /*++
@@ -107,7 +108,7 @@ HRESULT PackMeasurements() {
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD dwError = 0;
 
-	char zipFileName[MAX_PATH] = { 0 };
+	char zipFileName[MAX_PATH_LENGTH] = { 0 };
 	char	deviceID[DEVICE_ID_LENGTH + 1] = { 0 };
 	FILE* idFile = NULL;
 	if (wcslen(deviceIDFileName) > 0) {
@@ -122,18 +123,18 @@ HRESULT PackMeasurements() {
 		size_t deviceIDRealLen = fread_s(deviceID, DEVICE_ID_LENGTH, 1, DEVICE_ID_LENGTH, idFile);
 		fclose(idFile);
 
-		sprintf_s(zipFileName, MAX_PATH, "%wsPCR_measurements_%s.zip", currentDir, deviceID);
+		sprintf_s(zipFileName, MAX_PATH_LENGTH, "%wsPCR_measurements_%s.zip", currentDir, deviceID);
 	}
 	else {
-		sprintf_s(zipFileName, MAX_PATH, "%wsPCR_measurements.zip", currentDir);
+		sprintf_s(zipFileName, MAX_PATH_LENGTH, "%wsPCR_measurements.zip", currentDir);
 	}
 
 	// Remove previous zip file
 	remove(zipFileName);
 
 	// Search for all PCR_*.txt files in the directory
-	TCHAR searchMask[MAX_PATH] = { 0 };
-	swprintf_s(searchMask, MAX_PATH, L"%wsPCR_*.txt", currentDir);
+	TCHAR searchMask[MAX_PATH_LENGTH] = { 0 };
+	swprintf_s(searchMask, MAX_PATH_LENGTH, L"%wsPCR_*.txt", currentDir);
 	hFind = FindFirstFile(searchMask, &ffd);
 	if (INVALID_HANDLE_VALUE == hFind) {
 		wprintf(L"FindFirstFile failed");
@@ -142,8 +143,8 @@ HRESULT PackMeasurements() {
 	do {
 		if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
 			// Open file, read content, write into zip file
-			char archive_filename[MAX_PATH];
-			sprintf_s(archive_filename, MAX_PATH, "%ws", ffd.cFileName);
+			char archive_filename[MAX_PATH_LENGTH];
+			sprintf_s(archive_filename, MAX_PATH_LENGTH, "%ws", ffd.cFileName);
 
 			filesize.LowPart = ffd.nFileSizeLow;
 			filesize.HighPart = ffd.nFileSizeHigh;
@@ -151,8 +152,8 @@ HRESULT PackMeasurements() {
 			BYTE*	data = new BYTE[(size_t)filesize.QuadPart];
 			size_t readed = 0;
 			FILE* hFile = NULL;
-			TCHAR fullFileName[MAX_PATH] = { 0 };
-			swprintf_s(fullFileName, MAX_PATH, L"%ws%ws", currentDir, ffd.cFileName);
+			TCHAR fullFileName[MAX_PATH_LENGTH] = { 0 };
+			swprintf_s(fullFileName, MAX_PATH_LENGTH, L"%ws%ws", currentDir, ffd.cFileName);
 			_wfopen_s(&hFile, fullFileName, L"r");
 			if (hFile) {
 				// read content of file
@@ -916,15 +917,16 @@ void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
 	// File name format (PCR_YYYY-MM-DD_HHMM): PCR_2018-03-30_1957.txt 
 	if (argc > 2) {
 		// Save target directory
-		wcscpy_s(currentDir, MAX_PATH, argv[2]); 
+		wcscpy_s(currentDir, MAX_PATH_LENGTH, argv[2]); 
 		// Put trailing backslash
-		currentDir[wcslen(currentDir)] = '\\';
-		swprintf_s(fileName, MAX_PATH, L"%wsPCR_%04d-%02d-%02d_%02d%02d.txt", currentDir, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
-		swprintf_s(deviceIDFileName, MAX_PATH, L"%ws%ws", currentDir, DEVICE_UNIQUE_ID_FILENAME);
+		currentDir[wcslen(currentDir) + 1] = 0; // appending end of string after character, which will be overwritten
+		currentDir[wcslen(currentDir)] = '\\'; 
+		swprintf_s(fileName, MAX_PATH_LENGTH, L"%wsPCR_%04d-%02d-%02d_%02d%02d.txt", currentDir, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
+		swprintf_s(deviceIDFileName, MAX_PATH_LENGTH, L"%ws%ws", currentDir, DEVICE_UNIQUE_ID_FILENAME);
 	}
 	else {
-		swprintf_s(fileName, MAX_PATH, L"PCR_%04d-%02d-%02d_%02d%02d.txt", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
-		swprintf_s(deviceIDFileName, MAX_PATH, DEVICE_UNIQUE_ID_FILENAME);
+		swprintf_s(fileName, MAX_PATH_LENGTH, L"PCR_%04d-%02d-%02d_%02d%02d.txt", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
+		swprintf_s(deviceIDFileName, MAX_PATH_LENGTH, DEVICE_UNIQUE_ID_FILENAME);
 	}
 	_wfopen_s(&pFile, fileName, L"w");
 
@@ -981,9 +983,9 @@ HRESULT schedule(const WCHAR* appName, bool bSchedule) {
 	WCHAR taskName[] = L"tpm_pcr_collect";
 
 	if (bSchedule) {
-		WCHAR fullPath[MAX_PATH] = {0};
-		DWORD len = MAX_PATH - 1;
-		WCHAR fullPathDir[MAX_PATH] = { 0 };
+		WCHAR fullPath[MAX_PATH_LENGTH] = {0};
+		DWORD len = MAX_PATH_LENGTH - 1;
+		WCHAR fullPathDir[MAX_PATH_LENGTH] = { 0 };
 		// Full path to exe
 		GetModuleFileName(NULL, fullPath, len); 
 		// Directory to exe
