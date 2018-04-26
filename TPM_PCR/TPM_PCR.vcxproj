@@ -153,6 +153,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="miniz.c" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TPM_PCR.cpp" />
   </ItemGroup>
