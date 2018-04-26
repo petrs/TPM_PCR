@@ -1,6 +1,6 @@
 /*++
 Simple utility to collect the TPM information and TPM PCR registry. Heavily based on Microsoft PCPTool
-2018, Petr Svenda, https://github.petrs
+2018, Petr Svenda, https://github.com/petrs
 --*/
 /*++
 THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
@@ -24,10 +24,6 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 
 #define TPM_PCR_VERSION L"0.1.4"
 
-// #define DLL_TPM_PCR will cause to restrict code only to limited set of functions 
-// used inside dll version of collector with output only returned as string instead of storage into file    
-// #define DLL_TPM_PCR
-
 #define TPM_AVAILABLE_PLATFORM_PCRS (24)
 #define SHA1_DIGEST_SIZE   (20)
 #define SHA256_DIGEST_SIZE (32)
@@ -40,7 +36,7 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #define DEVICE_UNIQUE_ID_FILENAME L"unique_device_id.txt"
 
 const size_t DEVICE_ID_LENGTH = 16;
-const size_t MAX_LOG_MESSAGE_LENGTH = 1000;
+const size_t MAX_LOG_MESSAGE_LENGTH = 10000;
 const size_t MAX_PATH_LENGTH = 10000;
 WCHAR fileName[MAX_PATH_LENGTH + 1]; // file name for measurement storage
 WCHAR deviceIDFileName[MAX_PATH_LENGTH + 1] = { 0 }; // file name for unique device ID
@@ -50,7 +46,6 @@ WCHAR currentDir[MAX_PATH_LENGTH + 1] = {0};
 CHAR* schedule_xml = "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n <Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n<RegistrationInfo>\n<Date>2018-04-08T19:58:44</Date>\n<Author>crocs</Author>\n<URI>\\TPM_PCR</URI>\n</RegistrationInfo>\n<Triggers>\n<CalendarTrigger>\n<StartBoundary>2018-04-08T19:00:00</StartBoundary>\n<Enabled>true</Enabled>\n<ScheduleByDay>\n<DaysInterval>1</DaysInterval>\n</ScheduleByDay>\n</CalendarTrigger>\n</Triggers>\n<Principals>\n<Principal id=\"Author\">\n<LogonType>InteractiveToken</LogonType>\n<RunLevel>LeastPrivilege</RunLevel>\n</Principal>\n</Principals>\n<Settings>\n<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n<StopIfGoingOnBatteries>true</StopIfGoingOnBatteries>\n<AllowHardTerminate>true</AllowHardTerminate>\n<StartWhenAvailable>true</StartWhenAvailable>\n<RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>\n<IdleSettings>\n<StopOnIdleEnd>true</StopOnIdleEnd>\n<RestartOnIdle>false</RestartOnIdle>\n</IdleSettings>\n<AllowStartOnDemand>true</AllowStartOnDemand>\n<Enabled>true</Enabled>\n<Hidden>false</Hidden>\n<RunOnlyIfIdle>false</RunOnlyIfIdle>\n<WakeToRun>false</WakeToRun>\n<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>\n<Priority>7</Priority>\n</Settings>\n<Actions Context=\"Author\">\n<Exec>\n<Command>%ws</Command>\n<Arguments>collect %ws</Arguments>\n</Exec>\n</Actions>\n</Task>";
 const size_t MAX_SCHEDULE_XML_LENGTH = 4000 + 2 * MAX_PATH_LENGTH; // length of schedule_xml + space for two paths filled in later
 
-#ifndef DLL_TPM_PCR
 /*++
 Log provided string to stdout and file (if opened) - unicode version
 --*/
@@ -65,7 +60,6 @@ void logResult(const CHAR* message) {
 	printf(message);
 	if (pFile) fprintf(pFile, message);
 }
-#endif
 
 /*++
 Insert basic measurement info header
@@ -96,7 +90,6 @@ void InsertMeasurementFooter() {
 
 
 
-#ifndef DLL_TPM_PCR
 /*++
 Packs all files with measurements into single zip file
 --*/
@@ -178,7 +171,6 @@ HRESULT PackMeasurements() {
 
 	return hr;
 }
-#endif
 
 /*++
 Inserts indentation into output
@@ -309,7 +301,6 @@ HRESULT PcpToolGetVersion()
 	HRESULT hr = S_OK;
 	NCRYPT_PROV_HANDLE hProvTpm = NULL;
 	WCHAR versionData[256] = L"";
-	WCHAR fwVersion[256] = L"";
 	DWORD cbData = 0;
 	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 
@@ -686,7 +677,6 @@ Cleanup:
 	return hr;
 }
 
-#ifndef DLL_TPM_PCR
 /*++
 Prints provided key in human readable format
 --*/
@@ -959,7 +949,7 @@ void PrintInfo() {
 /*++
 Collects all required data 
 --*/
-void CollectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll) {
+void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll) {
 	PrepareMeasurementFiles(argc, argv);
 
 	// System info via systeminfo tool
@@ -1070,16 +1060,16 @@ int __cdecl wmain(_In_ int argc,
 		WCHAR* command = argv[1];
 		if (!_wcsicmp(command, L"collect"))
 		{
-			CollectData(argc, argv, false);
+			collectData(argc, argv, false);
 		}
 		else if (!_wcsicmp(command, L"collectall"))
 		{
-			CollectData(argc, argv, true);
+			collectData(argc, argv, true);
 		}
 		else if (!_wcsicmp(command, L"schedule"))
 		{
 			schedule(argv[0], true);
-			CollectData(argc, argv, false); // Collect data after schedule to verify functionality
+			collectData(argc, argv, false); // Collect data after schedule to verify functionality
 		}
 		else if (!_wcsicmp(command, L"unschedule"))
 		{
@@ -1094,6 +1084,5 @@ int __cdecl wmain(_In_ int argc,
 	}
 }
 
-#endif
 
 
