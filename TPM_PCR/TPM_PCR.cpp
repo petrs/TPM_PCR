@@ -924,7 +924,7 @@ void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
 	InsertMeasurementHeader(&st, &ft);
 }
 
-void PrintHelp() {
+void printHelp() {
 	wprintf(L"TPM_PCR - a tool for collection of Trusted Platform Module data for research purposes.\n");
 	wprintf(L"2018, CRoCS MUNI.\n");
 	wprintf(L"Usage: TPM_PCR.exe collect ... collects basic TPM data, store in current folder\n");
@@ -1041,24 +1041,43 @@ HRESULT schedule(const WCHAR* appName, bool bSchedule) {
 	return hr;
 }
 
+void scheduleInteractive(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) 
+{
+	wprintf(L"\nYou executed TPM_PCR.exe with no arguments. Please help us an academic research and schedule the periodic data collection.\n");
+	wprintf(L"No personal data will be collected and no data are sent out of your computer without your consent.\n");
+	wprintf(L"Schedule data collection (Y/N)?: ");
+	WCHAR answer[100];
+	memset(answer, 0, sizeof(answer));
+	wscanf_s(L"%99wS", answer, (unsigned)_countof(answer));
 
-int __cdecl wmain(_In_ int argc,
-	_In_reads_(argc) WCHAR* argv[])
+	wprintf(L"\n");
+	if (!wcscmp(answer, L"y") || !wcscmp(answer, L"Y")) {
+		schedule(argv[0], true);
+		collectData(argc, argv, false); // Collect data after schedule to verify functionality
+	}
+	else {
+		wprintf(L"Exiting program...\n");
+	}
+}
+
+int __cdecl wmain(_In_ int argc, _In_reads_(argc) WCHAR* argv[])
 {
 	PrintInfo();
 
-	if ((argc <= 1) ||
-		(!wcscmp(argv[1], L"/?")) ||
-		(!wcscmp(argv[1], L"-?")) ||
-		(!_wcsicmp(argv[1], L"/h")) ||
-		(!_wcsicmp(argv[1], L"-h")))
-	{
-		PrintHelp();
+	if (argc <= 1)  {
+		// Run interactive mode, ask for scheduling
+		scheduleInteractive(argc, argv);
 	}
 	else
 	{
 		WCHAR* command = argv[1];
-		if (!_wcsicmp(command, L"collect"))
+		if ((!wcscmp(argv[1], L"/?")) ||
+			(!wcscmp(argv[1], L"-?")) ||
+			(!_wcsicmp(argv[1], L"/h")) ||
+			(!_wcsicmp(argv[1], L"-h"))) {
+			printHelp();
+		}
+		else if (!_wcsicmp(command, L"collect"))
 		{
 			collectData(argc, argv, false);
 		}
@@ -1079,7 +1098,7 @@ int __cdecl wmain(_In_ int argc,
 		{
 			wprintf(L"Command not found.\n");
 
-			PrintHelp();
+			printHelp();
 		}
 	}
 }
