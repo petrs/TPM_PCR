@@ -22,7 +22,7 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #include "stdafx.h"
 #include "miniz.h"
 
-#define TPM_PCR_VERSION L"0.1.4"
+#define TPM_PCR_VERSION L"0.1.5"
 
 #define TPM_AVAILABLE_PLATFORM_PCRS (24)
 #define SHA1_DIGEST_SIZE   (20)
