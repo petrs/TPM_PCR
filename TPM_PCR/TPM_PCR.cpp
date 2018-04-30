@@ -776,11 +776,11 @@ Cleanup:
 }
 
 HRESULT
-PcpToolGetEK_RSK()
-	/*++
-	Retrieve the EKPub from the TPM through the PCP. The key is provided as a
-	BCRYPT_RSAKEY_BLOB structure. Requires Admin rights.
-	--*/
+PcpToolGetEK_RSK(bool bFullKey)
+/*++
+Retrieve the EKPub from the TPM through the PCP. The key is provided as a
+BCRYPT_RSAKEY_BLOB structure. Requires Admin rights.
+--*/
 {
 	HRESULT hr = S_OK;
 	PCWSTR fileName = NULL;
@@ -789,26 +789,12 @@ PcpToolGetEK_RSK()
 	DWORD cbEkPub = 0;
 	BYTE pbSrkPub[1024] = { 0 };
 	DWORD cbSrkPub = 0;
+	WCHAR message[MAX_LOG_MESSAGE_LENGTH];
 
 	if (FAILED(hr = HRESULT_FROM_WIN32(NCryptOpenStorageProvider(
 		&hProv,
 		MS_PLATFORM_CRYPTO_PROVIDER,
 		0))))
-	{
-		goto Cleanup;
-	}
-
-	if (FAILED(hr = HRESULT_FROM_WIN32(NCryptGetProperty(hProv,
-		NCRYPT_PCP_EKPUB_PROPERTY,
-		pbEkPub,
-		sizeof(pbEkPub),
-		&cbEkPub,
-		0))))
-	{
-		goto Cleanup;
-	}
-
-	if (FAILED(hr = PcpToolDisplayKey(L"EndorsementKey", pbEkPub, cbEkPub, 0)))
 	{
 		goto Cleanup;
 	}
@@ -824,11 +810,51 @@ PcpToolGetEK_RSK()
 		goto Cleanup;
 	}
 
-	// Output result
-	if (FAILED(hr = PcpToolDisplayKey(L"StorageRootKey", pbSrkPub, cbSrkPub, 0)))
+	if (bFullKey) {
+		if (FAILED(hr = PcpToolDisplayKey(L"StorageRootKey", pbSrkPub, cbSrkPub, 0)))
+		{
+			goto Cleanup;
+		}
+	}
+	else {
+		// Extract only two MSBs of modulus
+		BCRYPT_RSAKEY_BLOB* pKey = (BCRYPT_RSAKEY_BLOB*)pbSrkPub;
+		if ((sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp + 1) < sizeof(pbSrkPub)) {
+			BYTE msbRSK1 = pbSrkPub[sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp];
+			BYTE msbRSK2 = pbSrkPub[sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp + 1];
+			swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<RSK>%02x%02x</RSK>\n", msbRSK1, msbRSK2);
+			logResult(message);
+		}
+	}
+
+	if (FAILED(hr = HRESULT_FROM_WIN32(NCryptGetProperty(hProv,
+		NCRYPT_PCP_EKPUB_PROPERTY,
+		pbEkPub,
+		sizeof(pbEkPub),
+		&cbEkPub,
+		0))))
 	{
 		goto Cleanup;
 	}
+
+	if (bFullKey) {
+		if (FAILED(hr = PcpToolDisplayKey(L"EndorsementKey", pbEkPub, cbEkPub, 0)))
+		{
+			goto Cleanup;
+		}
+	}
+	else {
+		// Extract only two MSBs of modulus
+		BCRYPT_RSAKEY_BLOB* pKey = (BCRYPT_RSAKEY_BLOB*)pbEkPub;
+		if ((sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp + 1) < sizeof(pbEkPub)) {
+			BYTE msbEK1 = pbEkPub[sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp];
+			BYTE msbEK2 = pbEkPub[sizeof(BCRYPT_RSAKEY_BLOB) + pKey->cbPublicExp + 1];
+			swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"<EK>%02x%02x</EK>\n", msbEK1, msbEK2);
+			logResult(message);
+		}
+	}
+
+
 
 Cleanup:
 	if (hProv != NULL)
@@ -960,9 +986,8 @@ void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll
 	PcpToolGetPCRs();
 	PcpToolGetPlatformCounters();
 
-	if (bCollectAll) {
-		PcpToolGetEK_RSK(); // typically requires admin rights to succeed
-	}
+	// 
+	PcpToolGetEK_RSK(bCollectAll);
 
 	InsertMeasurementFooter();
 
