@@ -358,7 +358,7 @@ HRESULT PcpToolGetVersion()
 		logResult(message);
 	}
 
-
+	//wcscpy(versionData, L"TPM-Version:2.0 -Level:0-Revision:1.16-VendorID:'INTC'-Firmware:720896.1202");
 	// Some heuristics to parse firmware version
 	// INTC Firmware:720904.3280226 -> 11.8.50.3426
 	// 720904_decadic => B0008_hex => 11.8.
@@ -394,7 +394,7 @@ HRESULT PcpToolGetVersion()
 		vendor = L"?";
 	}
 
-	if (major1 != 0 && minor1 != 0) {
+	if (major1 != 0) {
 		if (swprintf_s(message, MAX_LOG_MESSAGE_LENGTH, L"  <FirmwareVersion>%s %d.%d.%d.%d</FirmwareVersion>\n", vendor, major1, major2, minor1, minor2) >= 0) {
 			logResult(message);
 		}
