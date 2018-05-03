@@ -22,7 +22,7 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #include "stdafx.h"
 #include "miniz.h"
 
-#define TPM_PCR_VERSION L"0.1.5"
+#define TPM_PCR_VERSION L"0.1.6"
 
 #define TPM_AVAILABLE_PLATFORM_PCRS (24)
 #define SHA1_DIGEST_SIZE   (20)
@@ -951,7 +951,7 @@ void PrepareMeasurementFiles(_In_ int argc, _In_reads_(argc) WCHAR* argv[]) {
 }
 
 void printHelp() {
-	wprintf(L"TPM_PCR - a tool for collection of Trusted Platform Module data for research purposes.\n");
+	wprintf(L"TPM_PCR %s - a tool for collection of Trusted Platform Module data for research purposes.\n", TPM_PCR_VERSION);
 	wprintf(L"2018, CRoCS MUNI.\n");
 	wprintf(L"Usage: TPM_PCR.exe collect ... collects basic TPM data, store in current folder\n");
 	wprintf(L"Usage: TPM_PCR.exe collect <base_path> ... collects basic TPM data, set base directory path as base_path\n");
@@ -965,7 +965,7 @@ void printHelp() {
 
 void PrintInfo() {
 	wprintf(L"*******************************************************************\n");
-	wprintf(L"TPM_PCR - a tool for collection of Trusted Platform Module data\n");
+	wprintf(L"TPM_PCR %s - a tool for collection of Trusted Platform Module data\n", TPM_PCR_VERSION);
 	wprintf(L"for research purposes.\n2018, CRoCS MUNI.\n");
 	wprintf(L"\nIf you want to unschedule periodic runs, please visit\n");
 	wprintf(L"https://github.com/petrs/TPM_PCR for howto.\n");
