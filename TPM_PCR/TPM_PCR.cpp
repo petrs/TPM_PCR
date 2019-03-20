@@ -364,6 +364,12 @@ HRESULT PcpToolGetVersion()
 	// 720904_decadic => B0008_hex => 11.8.
 	// 3280226_decadic => 320D62_hex => 50.3426 
 
+	// 0x000b0006 0x00000466 => 11.6.0.1126
+
+	//wcscpy(versionData, L"TPM-Version:2.0 -Level:0-Revision:1.38-VendorID:'INTC'-Firmware:26345473.0");
+	// 26279937.0 => INTC 401.1.0.0 => 0191_0001_hex => 401.1.
+	// 26345473.0 => INTC 402.1.0.0 => 0192_0001_hex => 402.1.
+
 	// Find firmware code itself
 	WCHAR* firmware1 = wcsstr(versionData, L"Firmware:");
 	firmware1 += wcslen(L"Firmware:");
@@ -372,9 +378,9 @@ HRESULT PcpToolGetVersion()
 	long int i1 = wcstol(firmware1, &firmware1, 10); 
 	firmware1++; // skip .
 	long int i2 = wcstol(firmware1, &firmware1, 10);
-	int major1 = i1 >> 16 & 0xff;
+	int major1 = i1 >> 16 & 0xffff;
 	int major2 = i1 & 0xffff;
-	int minor1 = i2 >> 16 & 0xff;
+	int minor1 = i2 >> 16 & 0xffff;
 	int minor2 = i2 & 0xffff;
 
 
