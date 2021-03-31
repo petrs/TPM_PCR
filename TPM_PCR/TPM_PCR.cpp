@@ -22,7 +22,7 @@ This file contains the actual SDK samples for the Platform Crypto Provider.
 #include "stdafx.h"
 #include "miniz.h"
 
-#define TPM_PCR_VERSION L"0.1.6"
+#define TPM_PCR_VERSION L"0.1.8"
 
 #define TPM_AVAILABLE_PLATFORM_PCRS (24)
 #define SHA1_DIGEST_SIZE   (20)
@@ -88,7 +88,38 @@ void InsertMeasurementFooter() {
 	logResult(L"</Measurement>\n");
 }
 
+size_t GetDeviceID(char* deviceID, size_t deviceIDLen) {
+	FILE* idFile = NULL;
+	size_t deviceIDRealLen = 0;
+	if (wcslen(deviceIDFileName) > 0) {
+		_wfopen_s(&idFile, deviceIDFileName, L"r");
+	}
+	else {
+		_wfopen_s(&idFile, DEVICE_UNIQUE_ID_FILENAME, L"r");
+	}
 
+	if (idFile) {
+		// File with unique id exists, use the value
+		deviceIDRealLen = fread_s(deviceID, deviceIDLen, 1, deviceIDLen, idFile);
+		fclose(idFile);
+	}
+	else {
+		// no value existing value
+		// File with unique id not exists yet, create and generate new unique id
+		srand((unsigned int)time(NULL));
+		for (size_t i = 0; i < DEVICE_ID_LENGTH; i++) {
+			deviceID[i] = '0' + rand() % 10;
+		}
+		_wfopen_s(&idFile, deviceIDFileName, L"w");
+		if (idFile != NULL) {
+			fwrite(deviceID, DEVICE_ID_LENGTH, sizeof(BYTE), idFile);
+			fclose(idFile);
+		}
+		deviceIDRealLen = DEVICE_ID_LENGTH;
+	}
+
+	return deviceIDRealLen;
+}
 
 /*++
 Packs all files with measurements into single zip file
@@ -102,20 +133,9 @@ HRESULT PackMeasurements() {
 	DWORD dwError = 0;
 
 	char zipFileName[MAX_PATH_LENGTH] = { 0 };
-	char	deviceID[DEVICE_ID_LENGTH + 1] = { 0 };
-	FILE* idFile = NULL;
-	if (wcslen(deviceIDFileName) > 0) {
-		_wfopen_s(&idFile, deviceIDFileName, L"r");
-	}
-	else {
-		_wfopen_s(&idFile, DEVICE_UNIQUE_ID_FILENAME, L"r");
-	}
-
-	if (idFile) {
-		// File with unique id exists, use the value
-		size_t deviceIDRealLen = fread_s(deviceID, DEVICE_ID_LENGTH, 1, DEVICE_ID_LENGTH, idFile);
-		fclose(idFile);
-
+	char deviceID[DEVICE_ID_LENGTH + 1] = { 0 };
+	size_t deviceIDRealLen = GetDeviceID(deviceID, DEVICE_ID_LENGTH);
+	if (strlen(deviceID) > 0) {
 		sprintf_s(zipFileName, MAX_PATH_LENGTH, "%wsPCR_measurements_%s.zip", currentDir, deviceID);
 	}
 	else {
@@ -882,28 +902,8 @@ HRESULT PcpToolGetSystemInfo() {
 	// Device unique ID (generated randomly, stored in file and reused)
 	logResult(L"<DeviceUniqueID>");
 	char	deviceID[DEVICE_ID_LENGTH + 1] = {0};
-	FILE* idFile = NULL;
-	_wfopen_s(&idFile, deviceIDFileName, L"r");
-	if (idFile) {
-		// File with unique id already exists, use the value
-		size_t deviceIDRealLen = fread_s(deviceID, DEVICE_ID_LENGTH, 1, DEVICE_ID_LENGTH, idFile);
-		if (sprintf_s(message, MAX_LOG_MESSAGE_LENGTH, "%s", deviceID) >= 0) {
-			logResult(message);
-		}
-		fclose(idFile);
-	}
-	else {
-		// File with unique id not exists yet, create and generate new unique id
-		srand((unsigned int) time(NULL));
-		for (size_t i = 0; i < DEVICE_ID_LENGTH; i++) {
-			deviceID[i] = '0' + rand() % 10;
-		}
-		_wfopen_s(&idFile, deviceIDFileName, L"w");
-		if (idFile != NULL) {
-			fwrite(deviceID, DEVICE_ID_LENGTH, sizeof(BYTE), idFile);
-			fclose(idFile);
-		}
-		// Use newly generated ID
+	size_t deviceIDRealLen = GetDeviceID(deviceID, DEVICE_ID_LENGTH);
+	if (strlen(deviceID) > 0) {
 		if (sprintf_s(message, MAX_LOG_MESSAGE_LENGTH, "%s", deviceID) >= 0) {
 			logResult(message);
 		}
@@ -926,6 +926,36 @@ HRESULT PcpToolGetSystemInfo() {
 
 	return hr;
 }
+
+/*++
+Retrieves information about the target system using Microsoft's native tpmtool 
+--*/
+HRESULT CollectViaTPMTool() {
+	HRESULT hr = S_OK;
+
+	const size_t tpmtoolCmdLen = 1000;
+	WCHAR tpmtoolCmd[tpmtoolCmdLen];
+	// Try to invoke tpmtool
+	swprintf_s(tpmtoolCmd, tpmtoolCmdLen, L"tpmtool gatherlogs C:\\Users\\Public\\tpm");
+	hr = _wsystem(tpmtoolCmd);
+	// Try to copy result of the tool to data gathering file
+	if (hr == S_OK) {
+		char	deviceID[DEVICE_ID_LENGTH + 1] = { 0 };
+		size_t deviceIDRealLen = GetDeviceID(deviceID, DEVICE_ID_LENGTH);
+		if (strlen(deviceID) > 0) {
+			swprintf_s(tpmtoolCmd, tpmtoolCmdLen, L"copy C:\\Users\\Public\\tpm\\TpmInformation.txt %ws_TpmInformation_%S.txt", fileName, deviceID);
+		}
+		else {
+			swprintf_s(tpmtoolCmd, tpmtoolCmdLen, L"copy C:\\Users\\Public\\tpm\\TpmInformation.txt TpmInformation_%ws", fileName);
+		}
+		//wprintf(tpmtoolCmd);
+		_wsystem(tpmtoolCmd);
+	}
+
+	return hr;
+}
+
+
 
 /*++
 Prepares necessary files for storage of measurement info
@@ -995,10 +1025,15 @@ void collectData(_In_ int argc, _In_reads_(argc) WCHAR* argv[], bool bCollectAll
 	// 
 	PcpToolGetEK_RSK(bCollectAll);
 
+	// Collect using Microsoft's tpmtool
+	CollectViaTPMTool();
+
 	InsertMeasurementFooter();
 
 	// Close measurement file
 	fclose(pFile);
+
+
 
 	// Pack all existing measurements into single zip file
 	PackMeasurements();
